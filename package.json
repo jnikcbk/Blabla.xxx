@@ -1,12 +1,17 @@
 {
-  "name": "community-security-pro",
-  "version": "1.2.0",
-  "description": "Bot bảo vệ server cộng đồng - Chỉ Admin & Owner sử dụng được lệnh",
+  "name": "nrm-bot",
+  "version": "1.0.0",
+  "description": "Bot bảo mật NRM",
   "main": "index.js",
-  "scripts": { "start": "node index.js" },
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.0",
-    "chalk": "^4.1.2"
+    "fs-extra": "^11.2.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
