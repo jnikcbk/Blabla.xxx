@@ -136,36 +136,36 @@ client.on('messageCreate', async (message) => {
 
         message.reply({ embeds: [embed], components: [row] });
     }
-if (command === 'rblog') {
+
+    if (command === 'rblog') {
         const username = args[0];
         if (!username) return message.reply("❓ Cách dùng: `!rblog <tên_roblox>`");
 
         try {
-            // 1. KIỂM TRA TÊN THẬT (Xác thực tài khoản)
+            // 1. KIỂM TRA USERNAME CÓ THẬT KHÔNG
             const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { 
                 usernames: [username],
                 excludeBannedUsers: false 
-            });
+            }).catch(() => null);
 
-            if (!userRes.data.data.length) {
-                return message.reply(`❌ Tài khoản **${username}** không tồn tại! Hãy kiểm tra lại tên.`);
+            if (!userRes || !userRes.data.data.length) {
+                return message.reply(`❌ Không tìm thấy tài khoản **${username}**. Hãy kiểm tra lại chính xác tên!`);
             }
 
             const userId = userRes.data.data[0].id;
             const displayName = userRes.data.data[0].displayName;
 
-            const startMsg = await message.reply(`📡 **Đang bám sát:** \`${displayName}\` (@${username})...\n⚡ Chế độ: Quét liên tục (5s/lần). Bot sẽ nổ thông báo ngay khi mục tiêu vào game!`);
+            await message.reply(`📡 **Bắt đầu theo dõi:** \`${displayName}\` (@${username})\n⚡ Trạng thái: Quét liên tục (5s/lần). Khi đối tượng vào game, bot sẽ báo ngay!`);
 
-            // 2. VÒNG LẶP QUÉT SIÊU TỐC
-            const tracker = setInterval(async () => {
+            // 2. HÀM QUÉT CHUYÊN SÂU (Sử dụng đệ quy để không bao giờ dừng)
+            const startTracking = async () => {
                 try {
                     const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
                     const p = presenceRes.data.userPresences[0];
 
-                    // Kiểm tra nếu PresenceType là 2 (In Game)
-                    if (p.userPresenceType === 2 && p.placeId) {
-                        
-                        // Lấy tên game thật (Xóa bỏ lỗi dấu ...)
+                    // Nếu đang trong Game (Type 2)
+                    if (p && p.userPresenceType === 2 && p.placeId) {
+                        // Lấy tên game thật để xóa lỗi "..."
                         const gameInfo = await axios.get(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${p.placeId}`);
                         const realGameName = gameInfo.data[0]?.name || "Trò chơi ẩn";
 
@@ -175,41 +175,38 @@ if (command === 'rblog') {
                             .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`)
                             .addFields(
                                 { name: "👤 Đối tượng", value: `**${displayName}** (@${username})`, inline: true },
-                                { name: "🎮 Game đang chơi", value: `**${realGameName}**`, inline: true },
-                                { name: "🆔 Place ID", value: `\`${p.placeId}\``, inline: true }
+                                { name: "🎮 Game", value: `**${realGameName}**`, inline: true },
+                                { name: "🔗 Join", value: `[Bấm để vào cùng](https://www.roblox.com/games/${p.placeId})` }
                             )
-                            .setFooter({ text: "NRM Security - Realtime Tracker" })
                             .setTimestamp();
 
                         const row = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder()
-                                .setLabel('VÀO GAME NGAY')
-                                .setStyle(5) // Link style
-                                .setURL(`https://www.roblox.com/games/${p.placeId}`)
+                            new ButtonBuilder().setLabel('VÀO GAME NGAY').setStyle(5).setURL(`https://www.roblox.com/games/${p.placeId}`)
                         );
 
-                        // Gửi thông báo mới và tag bạn
-                        await message.channel.send({ 
-                            content: `🔔 <@${message.author.id}>! **${username}** vừa xuất hiện tại **${realGameName}**!`, 
+                        return message.channel.send({ 
+                            content: `🔔 <@${message.author.id}>! **${username}** đã vào game!`, 
                             embeds: [logEmbed],
                             components: [row] 
                         });
-
-                        // Xóa tin nhắn "Đang bám sát" cũ cho gọn channel
-                        startMsg.delete().catch(() => {});
-                        
-                        // Dừng quét để tiết kiệm tài nguyên sau khi đã báo
-                        clearInterval(tracker); 
                     }
+
+                    // Nếu chưa vào game, đợi 5 giây rồi tự gọi lại chính nó để quét tiếp
+                    setTimeout(startTracking, 5000);
+
                 } catch (err) {
-                    // Nếu lỗi API thì im lặng quét tiếp ở lượt sau
+                    // Nếu lỗi API (Roblox sập/lag), đợi 10s rồi thử lại, không để bot chết lệnh
+                    setTimeout(startTracking, 10000);
                 }
-            }, 500); // QUÉT MỖI 5 GIÂY - Đảm bảo không bỏ lỡ giây nào!
+            };
+
+            // Kích hoạt vòng lặp quét
+            startTracking();
 
         } catch (err) {
-            message.reply("❌ Lỗi hệ thống khi kết nối với Roblox API.");
+            message.reply("❌ Lỗi hệ thống: Không thể kết nối API Roblox.");
         }
-                                                                          }
+                       }                                                                      }
     // !joinvip (Nút Join Server VIP)
     if (command === 'joinvip') {
         const vipLink = args[0];
@@ -226,7 +223,75 @@ if (command === 'rblog') {
                 .setTitle("🎟️ SERVER VIP DETECTED")
                 .setDescription(`Đã sẵn sàng để join Server VIP của Place: **${placeId}**`)
                 .setColor(0x00ff00);
+if (command === 'ttacc') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!ttacc <tên_roblox>`");
 
+        try {
+            // 1. Lấy userId (Dùng API v1 chuẩn)
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
+                usernames: [username],
+                excludeBannedUsers: false
+            }).catch(() => null);
+
+            if (!userRes || !userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            const user = userRes.data.data[0];
+            const userId = user.id;
+
+            // 2. Gọi nhiều API cùng lúc (Promise.all) để tăng tốc độ và tránh timeout
+            const [detailRes, presenceRes, followRes, badgeRes, thumbRes] = await Promise.all([
+                axios.get(`https://users.roblox.com/v1/users/${userId}`).catch(() => ({ data: {} })),
+                axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] }).catch(() => ({ data: { userPresences: [] } })),
+                axios.get(`https://friends.roblox.com/v1/users/${userId}/followers/count`).catch(() => ({ data: { count: 0 } })),
+                axios.get(`https://badges.roblox.com/v1/users/${userId}/badges?limit=1&sortOrder=Desc`).catch(() => ({ data: { data: [] } })),
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`).catch(() => ({ data: { data: [{ imageUrl: "" }] } }))
+            ]);
+
+            // 3. Xử lý Ngày tạo & Trạng thái
+            const createdDate = detailRes.data.created ? new Date(detailRes.data.created).toLocaleDateString('vi-VN') : "Không rõ";
+            
+            const presence = presenceRes.data.userPresences[0] || {};
+            let statusText = "🌑 Offline";
+            if (presence.userPresenceType === 1) statusText = "🟢 Online (Web)";
+            if (presence.userPresenceType === 2) {
+                // Fix lỗi hiện dấu "..." bằng cách check lastLocation
+                statusText = `🎮 Đang chơi: **${presence.lastLocation || "Game ẩn/Kín"}**`;
+            }
+            if (presence.userPresenceType === 3) statusText = "🛠️ Đang trong Studio";
+
+            // 4. Xử lý Badge (Đoán game)
+            let topGame = "Không rõ (Ẩn Badge)";
+            if (badgeRes.data.data && badgeRes.data.data.length > 0) {
+                topGame = badgeRes.data.data[0].awarder?.name || "Ẩn thông tin";
+            }
+
+            // 5. Lấy ảnh đại diện (Thumbnail API mới)
+            const avatarUrl = thumbRes.data.data[0]?.imageUrl || "https://t.rbxcdn.com/79267156942055660855210996846152";
+
+            const embed = new EmbedBuilder()
+                .setTitle(`📊 THÔNG TIN: ${user.displayName} (@${username})`)
+                .setURL(`https://www.roblox.com/users/${userId}/profile`)
+                .setColor(0x00fbff)
+                .setThumbnail(avatarUrl)
+                .addFields(
+                    { name: "🆔 ID", value: `\`${userId}\``, inline: true },
+                    { name: "📅 Ngày gia nhập", value: createdDate, inline: true },
+                    { name: "👥 Follower", value: `${followRes.data.count || 0}`, inline: true },
+                    { name: "📍 Trạng thái", value: statusText },
+                    { name: "🔥 Badge mới nhất từ", value: `**${topGame}**` },
+                    { name: "📝 Tiểu sử", value: detailRes.data.description || "Trống" }
+                )
+                .setImage(avatarUrl)
+                .setFooter({ text: "Hệ thống soi acc chuyên nghiệp" })
+                .setTimestamp();
+
+            message.reply({ embeds: [embed] });
+
+        } catch (err) {
+            console.error("Lỗi API Roblox:", err.message);
+            message.reply("❌ Lỗi API hoặc tài khoản này đã bị xóa/banned.");
+        }
+                }
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setLabel('BẤM ĐỂ JOIN VIP')
@@ -241,64 +306,6 @@ if (command === 'rblog') {
         const username = args[0];
         if (!username) return message.reply("❓ Cách dùng: `!ttacc <tên_roblox>`");
 
-        try {
-            // 1. Lấy thông tin cơ bản
-            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
-                usernames: [username],
-                excludeBannedUsers: false
-            });
-
-            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
-            const userId = userRes.data.data[0].id;
-
-            // 2. Lấy chi tiết Profile & Ngày tạo
-            const detailRes = await axios.get(`https://users.roblox.com/v1/users/${userId}`);
-            const createdDate = new Date(detailRes.data.created).toLocaleDateString('vi-VN');
-
-            // 3. Lấy trạng thái & Game đang chơi
-            const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
-            const presence = presenceRes.data.userPresences[0];
-            
-            let statusText = "🌑 Offline";
-            if (presence.userPresenceType === 1) statusText = "🟢 Online (Web)";
-            if (presence.userPresenceType === 2) statusText = `🎮 Đang chơi: **${presence.lastLocation}**`;
-            if (presence.userPresenceType === 3) statusText = "🛠️ Đang trong Studio";
-
-            // 4. Lấy số lượng Follower
-            const followRes = await axios.get(`https://friends.roblox.com/v1/users/${userId}/followers/count`);
-
-            // --- ĐOÁN GAME CHƠI NHIỀU NHẤT QUA BADGE ---
-            // Lưu ý: Đây là thuật toán tìm game họ vừa cày Badge gần đây nhất
-            const badgeRes = await axios.get(`https://badges.roblox.com/v1/users/${userId}/badges?limit=10&sortOrder=Desc`);
-            let topGame = "Không rõ (Ẩn Inventory)";
-            if (badgeRes.data.data.length > 0) {
-                topGame = badgeRes.data.data[0].awarder.name; // Game gần nhất họ nhận Badge
-            }
-
-            const embed = new EmbedBuilder()
-                .setTitle(`📊 THÔNG TIN TÀI KHOẢN: ${username}`)
-                .setURL(`https://www.roblox.com/users/${userId}/profile`)
-                .setColor(0x00fbff)
-                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
-                .addFields(
-                    { name: "🆔 ID Người dùng", value: `\`${userId}\``, inline: true },
-                    { name: "📅 Ngày gia nhập", value: createdDate, inline: true },
-                    { name: "👥 Người theo dõi", value: `${followRes.data.count}`, inline: true },
-                    { name: "📍 Trạng thái hiện tại", value: statusText },
-                    { name: "🔥 Dự đoán Game cày nhiều nhất", value: `**${topGame}** (Dựa trên Badge mới nhất)` },
-                    { name: "📝 Tiểu sử", value: detailRes.data.description || "Trống" }
-                )
-                .setImage(`https://www.roblox.com/avatar-thumbnail/image?userId=${userId}&width=420&height=420&format=png`) // Ảnh cả người
-                .setFooter({ text: "địt lò bot - Hệ thống soi acc chuyên nghiệp" })
-                .setTimestamp();
-
-            message.reply({ embeds: [embed] });
-
-        } catch (err) {
-            console.error(err);
-            message.reply("❌ Lỗi khi lấy dữ liệu. Có thể acc này bị khóa hoặc API lỗi.");
-        }
-    }
     if (command === 'rbavatar') {
         const username = args[0];
         if (!username) return message.reply("❓ Cách dùng: `!rbavatar <tên_roblox>`");
