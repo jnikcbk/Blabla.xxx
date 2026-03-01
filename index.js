@@ -93,7 +93,48 @@ client.on('messageCreate', async (message) => {
             );
         message.reply({ embeds: [embed] });
     }
+// ===== RBL CHECK FULL =====
+if (message.content.startsWith("!rbcheck ")) {
 
+    const axios = require("axios");
+
+    const args = message.content.trim().split(/ +/);
+    const username = args[1];
+
+    if (!username)
+        return message.reply("Dùng: !rbcheck <username>");
+
+    try {
+        // Lấy userId
+        const userRes = await axios.post(
+            "https://users.roblox.com/v1/usernames/users",
+            { usernames: [username], excludeBannedUsers: false }
+        );
+
+        if (!userRes.data.data.length)
+            return message.reply("Không tìm thấy tài khoản.");
+
+        const userId = userRes.data.data[0].id;
+
+        // Check trạng thái
+        const presenceRes = await axios.post(
+            "https://presence.roblox.com/v1/presence/users",
+            { userIds: [userId] }
+        );
+
+        const status = presenceRes.data.userPresences[0].userPresenceType;
+
+        let text = "Offline";
+        if (status === 1) text = "Online";
+        if (status === 2) text = "Đang trong game";
+        if (status === 3) text = "Đang mở Studio";
+
+        message.reply(`${username}: ${text}`);
+
+    } catch (err) {
+        message.reply("Lỗi khi kiểm tra.");
+    }
+}
     // !setlog
     if (command === 'setlog') {
         const chan = message.mentions.channels.first();
