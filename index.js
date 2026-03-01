@@ -117,40 +117,7 @@ client.on('messageCreate', async (message) => {
         } catch (err) { message.reply("❌ Lỗi API Roblox."); }
     }
 
-    // !rblog (Theo dõi mục tiêu)
-    if (command === 'rblog') {
-        const axios = require("axios");
-        const username = args[0];
-        if (!username) return message.reply("❓ Dùng: `!rblog <username>`");
-        
-        message.reply(`📡 Đang theo dõi **${username}**... Sẽ báo khi đối tượng vào game!`);
-        
-        const tracker = setInterval(async () => {
-            try {
-                const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [username] });
-                const userId = userRes.data.data[0].id;
-                const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
-                const p = presenceRes.data.userPresences[0];
-
-                if (p.userPresenceType === 2 && p.placeId) {
-                    const gameInfo = await axios.get(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${p.placeId}`);
-                    const realName = gameInfo.data[0]?.name || "Game ẩn";
-                    
-                    const embed = new EmbedBuilder()
-                        .setTitle("🚀 PHÁT HIỆN MỤC TIÊU!")
-                        .setDescription(`**${username}** vừa vào game **${realName}**`)
-                        .setColor(0x00ff00);
-                        
-                    const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setLabel('JOIN NGAY').setStyle(5).setURL(`https://www.roblox.com/games/${p.placeId}`)
-                    );
-
-                    message.channel.send({ content: `🔔 <@${message.author.id}>`, embeds: [embed], components: [row] });
-                    clearInterval(tracker);
-                }
-            } catch (e) {}
-        }, 20000);
-    }
+    
 
     // !logacc (Lệnh Panel Đăng Nhập)
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
@@ -169,7 +136,73 @@ client.on('messageCreate', async (message) => {
 
         message.reply({ embeds: [embed], components: [row] });
     }
+if (command === 'rblog') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!rblog <tên_roblox>`");
 
+        try {
+            // 1. Kiểm tra xem tên tài khoản có thật hay không
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { 
+                usernames: [username],
+                excludeBannedUsers: false 
+            });
+
+            if (!userRes.data.data.length) {
+                return message.reply(`❌ Tài khoản **${username}** không tồn tại trên Roblox!`);
+            }
+
+            const userId = userRes.data.data[0].id;
+            const displayName = userRes.data.data[0].displayName;
+
+            message.reply(`📡 **Hệ thống Tracking:** Đã xác nhận tài khoản **${displayName}** (@${username}).\nBot sẽ thông báo ngay lập tức khi người này vào game!`);
+
+            // 2. Bắt đầu vòng lặp quét trạng thái
+            const tracker = setInterval(async () => {
+                try {
+                    const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
+                    const p = presenceRes.data.userPresences[0];
+
+                    // Nếu trạng thái là đang trong game (Type 2) và có PlaceId
+                    if (p.userPresenceType === 2 && p.placeId) {
+                        // Lấy tên game thật (fix lỗi hiện dấu ...)
+                        const gameInfo = await axios.get(`https://games.roblox.com/v1/games/multiget-place-details?placeIds=${p.placeId}`);
+                        const realGameName = gameInfo.data[0]?.name || "Trò chơi bí ẩn";
+
+                        const logEmbed = new EmbedBuilder()
+                            .setTitle("🚀 PHÁT HIỆN MỤC TIÊU VÀO GAME!")
+                            .setColor(0x00FF00)
+                            .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=150&height=150&format=png`)
+                            .addFields(
+                                { name: "👤 Người chơi", value: `**${displayName}** (@${username})`, inline: true },
+                                { name: "🎮 Game", value: `**${realGameName}**`, inline: true }
+                            )
+                            .setFooter({ text: "NRM Security - Auto Join System" })
+                            .setTimestamp();
+
+                        const row = new ActionRowBuilder().addComponents(
+                            new ButtonBuilder()
+                                .setLabel('VÀO GAME NGAY')
+                                .setStyle(ButtonStyle.Link)
+                                .setURL(`https://www.roblox.com/games/${p.placeId}`)
+                        );
+
+                        await message.channel.send({ 
+                            content: `🔔 <@${message.author.id}>! Đối tượng **${username}** đã vào game!`, 
+                            embeds: [logEmbed],
+                            components: [row] 
+                        });
+
+                        clearInterval(tracker); // Dừng quét sau khi đã báo thành công
+                    }
+                } catch (err) {
+                    // Tiếp tục quét nếu lỗi mạng tạm thời
+                }
+            }, 10000); // Quét mỗi 10 giây để báo nhanh nhất có thể
+
+        } catch (err) {
+            message.reply("❌ Có lỗi xảy ra khi kiểm tra tài khoản.");
+        }
+}
     // !joinvip (Nút Join Server VIP)
     if (command === 'joinvip') {
         const vipLink = args[0];
