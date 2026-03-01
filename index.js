@@ -184,25 +184,28 @@ if (command === 'rbcheck') {
                 topGame = badgeRes.data.data[0].awarder.name; // Game gần nhất họ nhận Badge
             }
 
-            const embed = new EmbedBuilder()
-                .setTitle(`📊 THÔNG TIN TÀI KHOẢN: ${username}`)
+            // --- LẤY ẢNH AVATAR CHUẨN (Fix lỗi không hiện ảnh) ---
+            const avatarRes = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=420x420&format=Png&isCircular=false`);
+            const avatarUrl = avatarRes.data.data[0].imageUrl;
+
+            const headshotRes = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`);
+            const headshotUrl = headshotRes.data.data[0].imageUrl;
+
+            const rbEmbed = new EmbedBuilder()
+                .setTitle(`🔍 Tra cứu Roblox: ${username}`)
                 .setURL(`https://www.roblox.com/users/${userId}/profile`)
-                .setColor(0x00fbff)
-                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
                 .addFields(
-                    { name: "🆔 ID Người dùng", value: `\`${userId}\``, inline: true },
-                    { name: "📅 Ngày gia nhập", value: createdDate, inline: true },
-                    { name: "👥 Người theo dõi", value: `${followRes.data.count}`, inline: true },
-                    { name: "📍 Trạng thái hiện tại", value: statusText },
-                    { name: "🔥 Dự đoán Game cày nhiều nhất", value: `**${topGame}** (Dựa trên Badge mới nhất)` },
-                    { name: "📝 Tiểu sử", value: detailRes.data.description || "Trống" }
+                    { name: "Tên hiển thị", value: displayName, inline: true },
+                    { name: "User ID", value: `\`${userId}\``, inline: true },
+                    { name: "Trạng thái", value: statusText }
                 )
-                .setImage(`https://www.roblox.com/avatar-thumbnail/image?userId=${userId}&width=420&height=420&format=png`) // Ảnh cả người
-                .setFooter({ text: "Mạnh Bot - Hệ thống soi acc chuyên nghiệp" })
+                .setThumbnail(headshotUrl) // Ảnh mặt nhỏ ở góc trên
+                .setImage(avatarUrl)      // Ảnh toàn thân to ở giữa
+                .setColor(color)
+                .setFooter({ text: "Mạnh Bot - Hệ thống soi acc" })
                 .setTimestamp();
 
-            message.reply({ embeds: [embed] });
-
+            message.reply({ embeds: [rbEmbed] });
         } catch (err) {
             console.error(err);
             message.reply("❌ Lỗi khi lấy dữ liệu. Có thể acc này bị khóa hoặc API lỗi.");
