@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, AuditLogEvent, EmbedBuilder, Collection, PermissionFlagsBits, ActivityType } = require('discord.js');
 require('dotenv').config();
 const fs = require('fs-extra');
-
+const axios = require('axios'); // Thêm dòng này để gọi API Roblox
 const client = new Client({
     intents: [Object.keys(GatewayIntentBits)] 
 });
@@ -93,48 +93,63 @@ client.on('messageCreate', async (message) => {
             );
         message.reply({ embeds: [embed] });
     }
-// ===== RBL CHECK FULL =====
-if (message.content.startsWith("!rbcheck ")) {
+// --- LỆNH RBCHECK ---
+    if (command === 'rbcheck') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!rbcheck <tên_roblox>`");
 
-    const axios = require("axios");
+        try {
+            // 1. Lấy thông tin cơ bản (ID)
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
+                usernames: [username],
+                excludeBannedUsers: false
+            });
 
-    const args = message.content.trim().split(/ +/);
-    const username = args[1];
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
 
-    if (!username)
-        return message.reply("Dùng: !rbcheck <username>");
+            const userId = userRes.data.data[0].id;
+            const displayName = userRes.data.data[0].displayName;
 
-    try {
-        // Lấy userId
-        const userRes = await axios.post(
-            "https://users.roblox.com/v1/usernames/users",
-            { usernames: [username], excludeBannedUsers: false }
-        );
+            // 2. Lấy trạng thái Online
+            const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", {
+                userIds: [userId]
+            });
 
-        if (!userRes.data.data.length)
-            return message.reply("Không tìm thấy tài khoản.");
+            const statusType = presenceRes.data.userPresences[0].userPresenceType;
+            let statusText = "🌑 Offline";
+            let color = 0x757575; // Xám
 
-        const userId = userRes.data.data[0].id;
+            if (statusType === 1) { 
+                statusText = "🟢 Online (Trang web)"; 
+                color = 0x00ff00; 
+            } else if (statusType === 2) { 
+                statusText = `🎮 Đang chơi: ${presenceRes.data.userPresences[0].lastLocation}`; 
+                color = 0x00a2ff; 
+            } else if (statusType === 3) { 
+                statusText = "🛠️ Đang trong Roblox Studio"; 
+                color = 0xffa500; 
+            }
 
-        // Check trạng thái
-        const presenceRes = await axios.post(
-            "https://presence.roblox.com/v1/presence/users",
-            { userIds: [userId] }
-        );
+            // 3. Gửi Embed kết quả
+            const rbEmbed = new EmbedBuilder()
+                .setTitle(`🔍 Tra cứu Roblox: ${username}`)
+                .setURL(`https://www.roblox.com/users/${userId}/profile`)
+                .addFields(
+                    { name: "Tên hiển thị", value: displayName, inline: true },
+                    { name: "ID người dùng", value: userId.toString(), inline: true },
+                    { name: "Trạng thái hiện tại", value: statusText }
+                )
+                .setColor(color)
+                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
+                .setTimestamp();
 
-        const status = presenceRes.data.userPresences[0].userPresenceType;
+            message.reply({ embeds: [rbEmbed] });
 
-        let text = "Offline";
-        if (status === 1) text = "Online";
-        if (status === 2) text = "Đang trong game";
-        if (status === 3) text = "Đang mở Studio";
-
-        message.reply(`${username}: ${text}`);
-
-    } catch (err) {
-        message.reply("Lỗi khi kiểm tra.");
+        } catch (err) {
+            console.error(err);
+            message.reply("❌ Có lỗi xảy ra khi kết nối với Roblox API.");
+        }
     }
-}
     // !setlog
     if (command === 'setlog') {
         const chan = message.mentions.channels.first();
