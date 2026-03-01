@@ -1,16 +1,12 @@
 {
-  "name": "fantasy-guardian",
-  "version": "1.0.0",
+  "name": "community-security-pro",
+  "version": "1.1.0",
+  "description": "Bot bảo vệ server cộng đồng chống Nuke, Raid, Spam, Link",
   "main": "index.js",
-  "type": "commonjs",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "engines": {
-    "node": "18.x"
-  },
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.0",
+    "chalk": "^4.1.2"
   }
 }
