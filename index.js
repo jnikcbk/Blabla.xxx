@@ -80,16 +80,23 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // !help
     if (command === 'help') {
         const embed = new EmbedBuilder()
-            .setTitle("📜 HƯỚNG DẪN NRM BOT")
-            .setColor(0x3498db)
+            .setTitle("🛡️ NRM SECURITY - ROBLOX EDITION")
+            .setColor(0x00aaff)
+            .setDescription("Hệ thống bảo mật Server & Tra cứu Roblox chuyên sâu.")
             .addFields(
-                { name: "⚙️ Cài đặt", value: "`!setlog #channel`: Đặt kênh báo cáo.\n`!setup [tính năng]`: Bật/Tắt (antiLink, antiNuke, antiRaid, antiSpam).\n`!status`: Xem trạng thái." },
-                { name: "🛡️ Whitelist", value: "`!whitelist @user`: Thêm tin cậy.\n`!unwhitelist @user`: Xóa tin cậy." },
-                { name: "🔨 Quản trị", value: "`!banbot @bot`: Ban bot lạ.\n`!kick @user`: Kick thành viên." }
-            );
+                { 
+                    name: "⚙️ HỆ THỐNG ANTI (BẢO MẬT)", 
+                    value: "`!setup`: Cấu hình Anti.\n`!status`: Trạng thái hệ thống.\n`!whitelist @user`: Thêm tin cậy.\n`!attack @user`: Ban & Dọn sạch rác.\n`!lock`/`!unlock`: Quản lý kênh chat.\n`!clear [số]`: Xóa tin nhắn." 
+                },
+                { 
+                    name: "🔍 ROBLOX TOOLS (TRA CỨU)", 
+                    value: "`!rbcheck [tên]`: Soi thông tin & trạng thái.\n`!rblog [tên]`: Theo dõi & lấy link vào game.\n`!rbavatar [tên]`: Lấy ảnh chân dung & toàn thân.\n`!rbid [link]`: Lấy ID nhanh.\n`!rbmath [số]`: Tính thuế 30% Robux." 
+                }
+            )
+            .setFooter({ text: "NRM Security Bot v2.0" })
+            .setTimestamp();
         message.reply({ embeds: [embed] });
     }
 if (command === 'rbcheck') {
@@ -145,6 +152,47 @@ if (command === 'rbcheck') {
             message.reply("❌ Lỗi kết nối API Roblox.");
         }
 }
+   if (command === 'rblog') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!rblog <tên_roblox>`");
+
+        message.reply(`📡 Đang thiết lập hệ thống theo dõi cho **${username}**... Bot sẽ kiểm tra trạng thái mỗi 30 giây.`);
+
+        // Tạo một vòng lặp kiểm tra (Interval)
+        const checkLog = setInterval(async () => {
+            try {
+                const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [username] });
+                const userId = userRes.data.data[0].id;
+
+                const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
+                const presence = presenceRes.data.userPresences[0];
+
+                // Nếu trạng thái là đang chơi game (Type 2)
+                if (presence.userPresenceType === 2) {
+                    const gameName = presence.lastLocation;
+                    const placeId = presence.placeId;
+                    const jobId = presence.gameId; // ID server cụ thể
+
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle("🚀 MỤC TIÊU ĐÃ VÀO GAME!")
+                        .setDescription(`Người chơi **${username}** hiện đang online.`)
+                        .addFields(
+                            { name: "🎮 Game", value: `**${gameName}**`, inline: true },
+                            { name: "🔗 Link Server", value: `[Nhấn để vào cùng](https://www.roblox.com/games/${placeId}?jobId=${jobId})`, inline: false }
+                        )
+                        .setColor(0x00FF00)
+                        .setTimestamp();
+
+                    message.channel.send({ content: `🔔 <@${message.author.id}>, đối tượng đã xuất hiện!`, embeds: [logEmbed] });
+                    
+                    // Dừng theo dõi sau khi đã tìm thấy để tiết kiệm tài nguyên
+                    clearInterval(checkLog);
+                }
+            } catch (err) {
+                console.log("Lỗi log: " + err);
+            }
+        }, 30000); // 30 giây kiểm tra 1 lần
+   }
     if (command === 'ttacc') {
         const username = args[0];
         if (!username) return message.reply("❓ Cách dùng: `!ttacc <tên_roblox>`");
