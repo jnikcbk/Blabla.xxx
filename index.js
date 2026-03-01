@@ -36,7 +36,109 @@ client.on('messageCreate', async (message) => {
             );
         return message.reply({ embeds: [embed] });
     }
+// --- LỆNH !rbcheck: KIỂM TRA NHANH TRẠNG THÁI ---
+    if (command === 'rbcheck') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!rbcheck <tên_roblox>`");
 
+        try {
+            // 1. Lấy UserId từ Username
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { 
+                usernames: [username] 
+            });
+
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            const userId = userRes.data.data[0].id;
+
+            // 2. Lấy trạng thái Presence
+            const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { 
+                userIds: [userId] 
+            });
+            const p = presenceRes.data.userPresences[0];
+
+            // 3. Xử lý hiển thị trạng thái
+            let statusEmoji = "⚪";
+            let statusText = "Offline hoặc Ẩn danh";
+            let detail = "";
+
+            if (p) {
+                switch (p.userPresenceType) {
+                    case 0: // Offline
+                        statusEmoji = "⚪";
+                        statusText = "Offline";
+                        break;
+                    case 1: // Online (Website)
+                        statusEmoji = "🔵";
+                        statusText = "Đang Online (Website/App)";
+                        break;
+                    case 2: // In Game
+                        statusEmoji = "🟢";
+                        statusText = `Đang chơi: **${p.lastLocation || "Trò chơi ẩn"}**`;
+                        detail = `\n📍 Place ID: \`${p.placeId}\``;
+                        break;
+                    case 3: // In Studio
+                        statusEmoji = "🧡";
+                        statusText = "Đang thiết kế (Roblox Studio)";
+                        break;
+                }
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🔍 Check: ${username}`)
+                .setDescription(`${statusEmoji} ${statusText}${detail}`)
+                .setColor(p.userPresenceType === 2 ? 0x00FF00 : 0x7289DA)
+                .setTimestamp();
+
+            // Nếu đang trong game, thêm nút Join nhanh
+            if (p.userPresenceType === 2) {
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setLabel('VÀO GAME NGAY')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(`roblox://experiences/start?placeId=${p.placeId}&gameInstanceId=${p.gameId || ""}`)
+                );
+                return message.reply({ embeds: [embed], components: [row] });
+            }
+
+            message.reply({ embeds: [embed] });
+
+        } catch (e) {
+            console.error(e);
+            message.reply("❌ Lỗi khi kiểm tra trạng thái Roblox.");
+        }
+        }
+    // --- LỆNH !laymk: TROLL LẤY MẬT KHẨU ---
+    if (command === 'laymk') {
+        const target = args[0];
+        if (!target) return message.reply("❓ Nhập tên đứa bạn muốn 'hack' mật khẩu nào!");
+
+        const embed = new EmbedBuilder()
+            .setTitle("🔑 ĐÃ TRÍCH XUẤT MẬT KHẨU THÀNH CÔNG!")
+            .setDescription(`Hệ thống đã truy cập vào cơ sở dữ liệu của **${target}**.\n\n**Trạng thái:** ✅ Hoàn tất 100%\n**Độ bảo mật:** Thấp`)
+            .setColor(0xFF0000) // Màu đỏ cho nguy hiểm
+            .setFooter({ text: "Dữ liệu sẽ tự hủy sau 60 giây..." });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('troll_button')
+                .setLabel('BẤM VÀO ĐỂ COPY MẬT KHẨU')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+        const response = await message.reply({ embeds: [embed], components: [row] });
+
+        // Xử lý khi có người bấm vào nút
+        const filter = i => i.customId === 'troll_button';
+        const collector = response.createMessageComponentCollector({ filter, time: 60000 });
+
+        collector.on('collect', async i => {
+            // ephemeral: true giúp chỉ người bấm mới thấy tin nhắn này
+            await i.reply({ 
+                content: `🤣🤣 **SCAMMMMMMMMMMMMM HAHAAHAHA!** \n\nLàm gì có mật khẩu nào ở đây, tỉnh táo lên bồ tèo! 🤡`, 
+                ephemeral: true 
+            });
+        });
+    }
     // --- LỆNH !rbjoin: ÉP VÀO SERVER ---
     if (command === 'rbjoin') {
         const user = args[0];
