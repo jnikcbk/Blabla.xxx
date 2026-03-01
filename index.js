@@ -160,56 +160,62 @@ client.on('messageCreate', async (message) => {
         };
         startTracking();
     }
-// --- LỆNH !rbjoin: ÉP VÀO SERVER ---
-    if (command === 'rbjoin') {
+
+    }
+          if (command === 'rbjoin') {
         const username = args[0];
-        if (!username) return message.reply("❓ Vui lòng nhập tên người chơi cần join.");
+        if (!username) return message.reply("❓ Cách dùng: `!rbjoin <tên_roblox>`");
 
         try {
-            // 1. Lấy UserId từ Username
-            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [username] });
+            // 1. Lấy thông tin ID người chơi
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
+                usernames: [username],
+                excludeBannedUsers: false
+            });
+
             if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
             const userId = userRes.data.data[0].id;
 
-            // 2. Check trạng thái Presence (Xem họ có đang trong game không và lấy Game ID)
+            // 2. Lấy trạng thái hiện tại (Presence)
             const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
             const p = presenceRes.data.userPresences[0];
 
-            // userPresenceType 2 là đang trong game
+            // Kiểm tra xem có đang ở trong game (Type 2) không
             if (p && p.userPresenceType === 2 && p.placeId) {
                 const placeId = p.placeId;
+                const jobId = p.gameId; // Đây là ID cụ thể của Server (JobId)
                 const gameName = p.lastLocation || "một trò chơi";
-                
-                // Tạo link Deep Link để ép mở app Roblox
-                // Cấu trúc: roblox://experiences/start?placeId=...&gameInstanceId=...
-                // Nếu không có JobId (gameInstanceId), ta dùng link join theo UserId
-                let joinLink = `roblox://experiences/start?placeId=${placeId}`;
-                if (p.gameId) { // p.gameId chính là JobId của server
-                    joinLink += `&gameInstanceId=${p.gameId}`;
-                }
+
+                // Tạo Deep Link ép mở App Roblox
+                // Nếu lấy được JobId thì sẽ vào chính xác 100% server đó
+                const forceJoinLink = `roblox://experiences/start?placeId=${placeId}${jobId ? `&gameInstanceId=${jobId}` : ""}`;
 
                 const embed = new EmbedBuilder()
-                    .setTitle(`🚀 Đã tìm thấy: ${username}`)
-                    .setDescription(`Đang chơi: **${gameName}**\nTrạng thái: **Sẵn sàng Join**`)
+                    .setTitle(`🚀 ĐÃ TÌM THẤY MỤC TIÊU!`)
+                    .setDescription(`Người chơi **${username}** đang ở trong game.`)
                     .setColor(0x00FF00)
-                    .setFooter({ text: "Lưu ý: Chỉ hoạt động nếu mục tiêu không tắt chế độ 'Who can join me?'" });
+                    .addFields(
+                        { name: "🎮 Trò chơi", value: `\`${gameName}\``, inline: true },
+                        { name: "🆔 Place ID", value: `\`${placeId}\``, inline: true }
+                    )
+                    .setTimestamp();
 
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setLabel(`ÉP VÀO SERVER CỦA ${username.toUpperCase()}`)
+                        .setLabel(`ÉP VÀO SERVER CÙNG ${username.toUpperCase()}`)
                         .setStyle(ButtonStyle.Link)
-                        .setURL(joinLink)
+                        .setURL(forceJoinLink)
                 );
 
                 message.reply({ embeds: [embed], components: [row] });
             } else {
-                message.reply(`❌ **${username}** hiện đang Offline hoặc không ở trong game.`);
+                message.reply(`❌ **${username}** hiện đang Offline, ở Website hoặc ẩn trạng thái Join trong cài đặt Privacy.`);
             }
-        } catch (e) {
-            console.error(e);
-            message.reply("❌ Lỗi hệ thống khi cố gắng lấy thông tin server.");
+        } catch (err) {
+            console.error(err);
+            message.reply("❌ Lỗi hệ thống khi kết nối API Roblox.");
         }
-    }
+}
     if (command === 'rbavatar') {
         try {
             const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [args[0]] });
