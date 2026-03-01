@@ -93,13 +93,11 @@ client.on('messageCreate', async (message) => {
             );
         message.reply({ embeds: [embed] });
     }
-// --- LỆNH RBCHECK ---
-    if (command === 'rbcheck') {
+if (command === 'rbcheck') {
         const username = args[0];
         if (!username) return message.reply("❓ Cách dùng: `!rbcheck <tên_roblox>`");
 
         try {
-            // 1. Lấy thông tin cơ bản (ID)
             const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
                 usernames: [username],
                 excludeBannedUsers: false
@@ -110,44 +108,104 @@ client.on('messageCreate', async (message) => {
             const userId = userRes.data.data[0].id;
             const displayName = userRes.data.data[0].displayName;
 
-            // 2. Lấy trạng thái Online
             const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", {
                 userIds: [userId]
             });
 
             const statusType = presenceRes.data.userPresences[0].userPresenceType;
             let statusText = "🌑 Offline";
-            let color = 0x757575; // Xám
+            let color = 0x757575;
 
-            if (statusType === 1) { 
-                statusText = "🟢 Online (Trang web)"; 
-                color = 0x00ff00; 
-            } else if (statusType === 2) { 
-                statusText = `🎮 Đang chơi: ${presenceRes.data.userPresences[0].lastLocation}`; 
+            if (statusType === 1) { statusText = "🟢 Online"; color = 0x00ff00; }
+            else if (statusType === 2) { 
+                statusText = `🎮 Đang chơi: **${presenceRes.data.userPresences[0].lastLocation || "Một trò chơi bí mật"}**`; 
                 color = 0x00a2ff; 
-            } else if (statusType === 3) { 
-                statusText = "🛠️ Đang trong Roblox Studio"; 
-                color = 0xffa500; 
             }
+            else if (statusType === 3) { statusText = "🛠️ Đang trong Studio"; color = 0xffa500; }
 
-            // 3. Gửi Embed kết quả
+            // --- LẤY ẢNH AVATAR ---
+            const avatarUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`;
+
             const rbEmbed = new EmbedBuilder()
-                .setTitle(`🔍 Tra cứu Roblox: ${username}`)
+                .setTitle(`🔍 Thông tin Roblox: ${username}`)
                 .setURL(`https://www.roblox.com/users/${userId}/profile`)
                 .addFields(
                     { name: "Tên hiển thị", value: displayName, inline: true },
-                    { name: "ID người dùng", value: userId.toString(), inline: true },
-                    { name: "Trạng thái hiện tại", value: statusText }
+                    { name: "User ID", value: `\`${userId}\``, inline: true },
+                    { name: "Trạng thái", value: statusText }
                 )
+                .setThumbnail(avatarUrl) // Hiển thị ảnh nhỏ bên góc
+                .setImage(avatarUrl)     // Hiển thị ảnh to ở dưới cho đẹp
                 .setColor(color)
-                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
+                .setFooter({ text: "Dữ liệu cập nhật từ Roblox API" })
                 .setTimestamp();
 
             message.reply({ embeds: [rbEmbed] });
 
         } catch (err) {
+            message.reply("❌ Lỗi kết nối API Roblox.");
+        }
+}
+    if (command === 'ttacc') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!ttacc <tên_roblox>`");
+
+        try {
+            // 1. Lấy thông tin cơ bản
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
+                usernames: [username],
+                excludeBannedUsers: false
+            });
+
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            const userId = userRes.data.data[0].id;
+
+            // 2. Lấy chi tiết Profile & Ngày tạo
+            const detailRes = await axios.get(`https://users.roblox.com/v1/users/${userId}`);
+            const createdDate = new Date(detailRes.data.created).toLocaleDateString('vi-VN');
+
+            // 3. Lấy trạng thái & Game đang chơi
+            const presenceRes = await axios.post("https://presence.roblox.com/v1/presence/users", { userIds: [userId] });
+            const presence = presenceRes.data.userPresences[0];
+            
+            let statusText = "🌑 Offline";
+            if (presence.userPresenceType === 1) statusText = "🟢 Online (Web)";
+            if (presence.userPresenceType === 2) statusText = `🎮 Đang chơi: **${presence.lastLocation}**`;
+            if (presence.userPresenceType === 3) statusText = "🛠️ Đang trong Studio";
+
+            // 4. Lấy số lượng Follower
+            const followRes = await axios.get(`https://friends.roblox.com/v1/users/${userId}/followers/count`);
+
+            // --- ĐOÁN GAME CHƠI NHIỀU NHẤT QUA BADGE ---
+            // Lưu ý: Đây là thuật toán tìm game họ vừa cày Badge gần đây nhất
+            const badgeRes = await axios.get(`https://badges.roblox.com/v1/users/${userId}/badges?limit=10&sortOrder=Desc`);
+            let topGame = "Không rõ (Ẩn Inventory)";
+            if (badgeRes.data.data.length > 0) {
+                topGame = badgeRes.data.data[0].awarder.name; // Game gần nhất họ nhận Badge
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle(`📊 THÔNG TIN TÀI KHOẢN: ${username}`)
+                .setURL(`https://www.roblox.com/users/${userId}/profile`)
+                .setColor(0x00fbff)
+                .setThumbnail(`https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=420&height=420&format=png`)
+                .addFields(
+                    { name: "🆔 ID Người dùng", value: `\`${userId}\``, inline: true },
+                    { name: "📅 Ngày gia nhập", value: createdDate, inline: true },
+                    { name: "👥 Người theo dõi", value: `${followRes.data.count}`, inline: true },
+                    { name: "📍 Trạng thái hiện tại", value: statusText },
+                    { name: "🔥 Dự đoán Game cày nhiều nhất", value: `**${topGame}** (Dựa trên Badge mới nhất)` },
+                    { name: "📝 Tiểu sử", value: detailRes.data.description || "Trống" }
+                )
+                .setImage(`https://www.roblox.com/avatar-thumbnail/image?userId=${userId}&width=420&height=420&format=png`) // Ảnh cả người
+                .setFooter({ text: "Mạnh Bot - Hệ thống soi acc chuyên nghiệp" })
+                .setTimestamp();
+
+            message.reply({ embeds: [embed] });
+
+        } catch (err) {
             console.error(err);
-            message.reply("❌ Có lỗi xảy ra khi kết nối với Roblox API.");
+            message.reply("❌ Lỗi khi lấy dữ liệu. Có thể acc này bị khóa hoặc API lỗi.");
         }
     }
     // !setlog
