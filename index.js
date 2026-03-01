@@ -18,7 +18,6 @@ let db = {
         antiSpam: true
     }
 };
-
 // Đọc dữ liệu từ file khi khởi động
 if (fs.existsSync(dbPath)) {
     db = fs.readJsonSync(dbPath);
