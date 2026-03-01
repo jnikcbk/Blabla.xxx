@@ -206,7 +206,7 @@ client.on('messageCreate', async (message) => {
         } catch (err) {
             message.reply("❌ Lỗi hệ thống: Không thể kết nối API Roblox.");
         }
-                       }                                                                      }
+                                                                                          }
     // !joinvip (Nút Join Server VIP)
     if (command === 'joinvip') {
         const vipLink = args[0];
