@@ -1,123 +1,162 @@
 const { Client, GatewayIntentBits, AuditLogEvent, EmbedBuilder, Collection, PermissionFlagsBits, ActivityType } = require('discord.js');
 require('dotenv').config();
-const chalk = require('chalk');
+const fs = require('fs-extra');
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildModeration,
-        GatewayIntentBits.GuildMembers
-    ]
+    intents: [Object.keys(GatewayIntentBits)] 
 });
 
-// Cấu hình lưu trữ (Trong thực tế nên dùng Database, ở đây lưu tạm vào bộ nhớ)
-let config = {
-    prefix: "!",
-    antiLink: true,
-    antiNuke: true,
-    antiRaid: true,
-    logChannel: null, // Sẽ được thiết lập qua lệnh !setlog
-    whitelist: [process.env.OWNER_ID]
+// --- HỆ THỐNG DATABASE (JSON) ---
+const dbPath = './database.json';
+let db = {
+    logChannel: null,
+    whitelist: [process.env.OWNER_ID],
+    settings: {
+        antiLink: true,
+        antiNuke: true,
+        antiRaid: true,
+        antiSpam: true
+    }
 };
+
+// Đọc dữ liệu từ file khi khởi động
+if (fs.existsSync(dbPath)) {
+    db = fs.readJsonSync(dbPath);
+}
+
+const saveDB = () => fs.writeJsonSync(dbPath, db, { spaces: 4 });
 
 const msgCache = new Collection();
 
 client.once('ready', () => {
-    console.log(chalk.green(`[SUCCESS]`) + ` Bot ${client.user.tag} đã sẵn sàng bảo vệ Server!`);
-    client.user.setActivity('!help để xem hướng dẫn', { type: ActivityType.Listening });
+    console.log(`[NRM BOT] Đã sẵn sàng! Bảo vệ server ngay bây giờ.`);
+    client.user.setActivity('!help | Bảo vệ Server', { type: ActivityType.Watching });
 });
 
 // --- HÀM GỬI LOG ---
-async function sendLog(guild, title, color, description) {
-    if (!config.logChannel) return;
-    const channel = guild.channels.cache.get(config.logChannel);
+async function sendLog(guild, title, color, desc) {
+    if (!db.logChannel) return;
+    const channel = guild.channels.cache.get(db.logChannel);
     if (!channel) return;
-
     const embed = new EmbedBuilder()
-        .setTitle(`🛡️ BẢO MẬT: ${title}`)
+        .setTitle(`🛡️ LOG BẢO MẬT: ${title}`)
         .setColor(color)
-        .setDescription(description)
+        .setDescription(desc)
         .setTimestamp();
     channel.send({ embeds: [embed] }).catch(() => {});
 }
 
-// --- XỬ LÝ LỆNH ---
+// --- XỬ LÝ LỆNH & AUTO MOD ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
     const isOwner = message.author.id === process.env.OWNER_ID;
     const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
 
-    if (!message.content.startsWith(config.prefix)) {
-        // TỰ ĐỘNG BẢO VỆ (Cho người dùng thường)
-        if (config.whitelist.includes(message.author.id)) return;
-        
+    // 1. CHẾ ĐỘ TỰ ĐỘNG (Dành cho người thường)
+    if (!db.whitelist.includes(message.author.id)) {
         // Anti-Link
-        if (config.antiLink && /(https?:\/\/[^\s]+)/g.test(message.content)) {
+        if (db.settings.antiLink && /(https?:\/\/[^\s]+)/g.test(message.content)) {
             await message.delete().catch(() => {});
-            return message.channel.send(`⚠️ **${message.author.username}**, không được gửi link!`).then(m => setTimeout(() => m.delete(), 3000));
+            return message.channel.send(`⚠️ **${message.author.username}**, link bị cấm tại đây!`).then(m => setTimeout(() => m.delete(), 3000));
         }
-        return;
+        // Anti-Spam (5 tin/5s)
+        if (db.settings.antiSpam) {
+            const now = Date.now();
+            const timestamps = msgCache.get(message.author.id) || [];
+            timestamps.push(now);
+            const recent = timestamps.filter(t => now - t < 5000);
+            msgCache.set(message.author.id, recent);
+            if (recent.length > 5) {
+                await message.member.timeout(60000, "Spamming").catch(() => {});
+                message.channel.send(`🔇 **${message.author.username}** bị mute 1 phút vì spam.`);
+            }
+        }
     }
 
-    // CHỈ ADMIN/OWNER MỚI ĐƯỢC DÙNG LỆNH DƯỚI ĐÂY
+    // 2. HỆ THỐNG LỆNH (Admin/Owner)
+    if (!message.content.startsWith('!')) return;
     if (!isOwner && !isAdmin) return;
 
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+    const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // 1. Lệnh Hướng dẫn
+    // !help
     if (command === 'help') {
-        const helpEmbed = new EmbedBuilder()
-            .setTitle("📜 HƯỚNG DẪN SỬ DỤNG BOT BẢO MẬT")
-            .setColor(0x00ff00)
+        const embed = new EmbedBuilder()
+            .setTitle("📜 HƯỚNG DẪN NRM BOT")
+            .setColor(0x3498db)
             .addFields(
-                { name: "🛡️ Bảo mật tự động", value: "`Anti-Nuke`, `Anti-Link`, `Anti-Raid` luôn chạy ngầm." },
-                { name: "⚙️ Lệnh cài đặt", value: "• `!setlog #channel`: Thiết lập kênh nhận báo cáo.\n• `!status`: Kiểm tra trạng thái hệ thống.\n• `!setup [tên]`: Bật/Tắt (ví dụ: `!setup antiLink`)." },
-                { name: "🔨 Lệnh quản trị", value: "• `!banbot @bot`: Ban ngay lập tức một bot lạ.\n• `!whitelist @user`: Thêm người tin cậy." }
-            )
-            .setFooter({ text: "Chỉ Admin/Owner mới có quyền dùng lệnh này" });
-        message.reply({ embeds: [helpEmbed] });
+                { name: "⚙️ Cài đặt", value: "`!setlog #channel`: Đặt kênh báo cáo.\n`!setup [tính năng]`: Bật/Tắt (antiLink, antiNuke, antiRaid, antiSpam).\n`!status`: Xem trạng thái." },
+                { name: "🛡️ Whitelist", value: "`!whitelist @user`: Thêm tin cậy.\n`!unwhitelist @user`: Xóa tin cậy." },
+                { name: "🔨 Quản trị", value: "`!banbot @bot`: Ban bot lạ.\n`!kick @user`: Kick thành viên." }
+            );
+        message.reply({ embeds: [embed] });
     }
 
-    // 2. Lệnh Thiết lập kênh Log
+    // !setlog
     if (command === 'setlog') {
-        const channel = message.mentions.channels.first();
-        if (!channel) return message.reply("❌ Vui lòng tag kênh. VD: `!setlog #nhat-ky` ");
-        config.logChannel = channel.id;
-        message.reply(`✅ Đã thiết lập kênh Log tại: ${channel}`);
+        const chan = message.mentions.channels.first();
+        if (!chan) return message.reply("❌ Tag kênh vào!");
+        db.logChannel = chan.id;
+        saveDB();
+        message.reply(`✅ Đã đặt kênh Log tại: ${chan}`);
     }
 
-    // 3. Lệnh Ban Bot lạ
+    // !setup (Bật/Tắt)
+    if (command === 'setup') {
+        const feature = args[0];
+        if (db.settings.hasOwnProperty(feature)) {
+            db.settings[feature] = !db.settings[feature];
+            saveDB();
+            message.reply(`✅ Tính năng **${feature}** hiện là: **${db.settings[feature] ? "BẬT" : "TẮT"}**`);
+        } else {
+            message.reply("❌ Nhập: antiLink, antiNuke, antiRaid hoặc antiSpam");
+        }
+    }
+
+    // !whitelist
+    if (command === 'whitelist') {
+        const user = message.mentions.users.first();
+        if (!user) return message.reply("❌ Tag người cần thêm!");
+        if (!db.whitelist.includes(user.id)) {
+            db.whitelist.push(user.id);
+            saveDB();
+            message.reply(`✅ Đã thêm **${user.tag}** vào danh sách trắng.`);
+        }
+    }
+
+    // !banbot
     if (command === 'banbot') {
-        const targetBot = message.mentions.members.first();
-        if (!targetBot || !targetBot.user.bot) return message.reply("❌ Vui lòng tag một con Bot cần Ban.");
-        
-        await targetBot.ban({ reason: "Lệnh BanBot: Loại bỏ bot lạ xâm nhập" });
-        message.reply(`✅ Đã Ban thành công bot phá hoại: **${targetBot.user.tag}**`);
-        sendLog(message.guild, "TRUY QUÉT BOT", 0xff0000, `Admin **${message.author.tag}** đã ban bot: **${targetBot.user.tag}**`);
-    }
-
-    // 4. Lệnh Status
-    if (command === 'status') {
-        message.reply(`**TRẠNG THÁI:**\n- Anti-Link: ${config.antiLink ? "✅" : "❌"}\n- Anti-Nuke: ${config.antiNuke ? "✅" : "❌"}\n- Kênh Log: ${config.logChannel ? `<#${config.logChannel}>` : "⚠️ Chưa cài đặt"}`);
+        const bot = message.mentions.members.first();
+        if (!bot || !bot.user.bot) return message.reply("❌ Tag một con Bot!");
+        await bot.ban({ reason: "Ban bot lạ" });
+        message.reply(`🚀 Đã ban bot: ${bot.user.tag}`);
     }
 });
 
-// --- TỰ ĐỘNG CHỐNG NUKE (XÓA KÊNH) ---
+// --- ANTI-NUKE (XỬ LÝ PHÁ HOẠI) ---
 client.on('channelDelete', async (channel) => {
-    if (!config.antiNuke) return;
+    if (!db.settings.antiNuke) return;
     const logs = await channel.guild.fetchAuditLogs({ limit: 1, type: AuditLogEvent.ChannelDelete });
     const entry = logs.entries.first();
     if (!entry) return;
 
-    if (!config.whitelist.includes(entry.executor.id) && entry.executor.id !== channel.guild.ownerId) {
+    if (!db.whitelist.includes(entry.executor.id) && entry.executor.id !== channel.guild.ownerId) {
         const member = await channel.guild.members.fetch(entry.executor.id);
-        await member.ban({ reason: "Anti-Nuke: Phá hoại server" }).catch(() => {});
+        await member.ban({ reason: "Anti-Nuke: Xóa kênh" }).catch(() => {});
         await channel.clone();
-        sendLog(channel.guild, "CHỐNG PHÁ HOẠI", 0xff0000, `**Kẻ phá hoại:** ${entry.executor.tag}\n**Hành động:** Xóa kênh ${channel.name}\n**Kết quả:** Đã Ban & Khôi phục.`);
+        sendLog(channel.guild, "ANTI-NUKE", 0xff0000, `**${entry.executor.tag}** đã bị Ban vì xóa kênh **${channel.name}**.`);
+    }
+});
+
+// --- ANTI-RAID (CHỐNG ACC MỚI) ---
+client.on('guildMemberAdd', async (member) => {
+    if (!db.settings.antiRaid) return;
+    const age = (Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24);
+    if (age < 1) {
+        await member.kick("Anti-Raid: Tài khoản < 24h").catch(() => {});
+        sendLog(member.guild, "ANTI-RAID", 0xffff00, `Đã Kick: **${member.user.tag}** (Tài khoản mới tạo).`);
     }
 });
 
