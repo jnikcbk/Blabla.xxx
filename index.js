@@ -197,7 +197,7 @@ if (command === 'rbcheck') {
                     { name: "📝 Tiểu sử", value: detailRes.data.description || "Trống" }
                 )
                 .setImage(`https://www.roblox.com/avatar-thumbnail/image?userId=${userId}&width=420&height=420&format=png`) // Ảnh cả người
-                .setFooter({ text: "Mạnh Bot - Hệ thống soi acc chuyên nghiệp" })
+                .setFooter({ text: "địt lò bot - Hệ thống soi acc chuyên nghiệp" })
                 .setTimestamp();
 
             message.reply({ embeds: [embed] });
@@ -205,6 +205,46 @@ if (command === 'rbcheck') {
         } catch (err) {
             console.error(err);
             message.reply("❌ Lỗi khi lấy dữ liệu. Có thể acc này bị khóa hoặc API lỗi.");
+        }
+    }
+    if (command === 'rbavatar') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Cách dùng: `!rbavatar <tên_roblox>`");
+
+        try {
+            // 1. Lấy ID từ Username
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", {
+                usernames: [username],
+                excludeBannedUsers: false
+            });
+
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            const userId = userRes.data.data[0].id;
+
+            // 2. Lấy đồng thời 2 loại ảnh: Toàn thân và Khuôn mặt
+            const [fullBodyRes, headshotRes] = await Promise.all([
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`),
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`)
+            ]);
+
+            const fullBodyUrl = fullBodyRes.data.data[0].imageUrl;
+            const headshotUrl = headshotRes.data.data[0].imageUrl;
+
+            const avatarEmbed = new EmbedBuilder()
+                .setTitle(`👤 Ảnh đại diện của ${username}`)
+                .setURL(`https://www.roblox.com/users/${userId}/profile`)
+                .setDescription(`[Nhấn vào đây để tải ảnh gốc (Full HD)](${fullBodyUrl})`)
+                .setImage(fullBodyUrl) // Ảnh toàn thân to rõ nét
+                .setThumbnail(headshotUrl) // Ảnh mặt nhỏ ở góc
+                .setColor(0x00AAFF)
+                .setFooter({ text: `ID: ${userId} | Yêu cầu bởi ${message.author.username}` })
+                .setTimestamp();
+
+            message.reply({ embeds: [avatarEmbed] });
+
+        } catch (err) {
+            console.error(err);
+            message.reply("❌ Lỗi khi lấy ảnh đại diện từ Roblox.");
         }
     }
     // !setlog
