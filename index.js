@@ -1,26 +1,44 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ActivityType } = require('discord.js');
+const { 
+    Client, 
+    GatewayIntentBits, 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    ActivityType 
+} = require('discord.js');
 require('dotenv').config();
 const axios = require('axios');
+
+// --- CÁC THƯ VIỆN DÀNH CHO VOICE ---
+const { 
+    joinVoiceChannel, 
+    createAudioPlayer, 
+    createAudioResource, 
+    AudioPlayerStatus, 
+    getVoiceConnection 
+} = require('@discordjs/voice');
+const discordTTS = require('discord-tts');
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildVoiceStates // QUAN TRỌNG: Cần để bot vào voice
     ]
 });
 
 client.once('ready', () => {
-    console.log(`[ROBLOX BOT] Đã sẵn sàng!`);
-    client.user.setActivity('!help | Roblox Tracker', { type: ActivityType.Watching });
+    console.log(`[LEVIATHAN BOT] Đã sẵn sàng hoạt động!`);
+    client.user.setActivity('!help | Roblox & Voice', { type: ActivityType.Watching });
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
     if (!message.content.startsWith('!')) return;
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
-const discordTTS = require('discord-tts');
+
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 // --- LỆNH HELP TỔNG HỢP (ROBLOX + VOICE) ---
