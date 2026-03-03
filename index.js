@@ -1,4 +1,3 @@
-// --- NHÓM 1: DISCORD.JS ---
 const { 
     Client, 
     GatewayIntentBits, 
@@ -8,12 +7,12 @@ const {
     ButtonStyle, 
     ActivityType 
 } = require('discord.js');
-
-// --- NHÓM 2: DOTENV & AXIOS (ROBLOX) ---
 require('dotenv').config();
 const axios = require('axios');
 
-// --- NHÓM 3: VOICE SYSTEM ---
+// THÊM DÒNG NÀY ĐỂ FIX LỖI KHÔNG NÓI TRÊN RAILWAY
+const ffmpeg = require('ffmpeg-static');
+
 const { 
     joinVoiceChannel, 
     createAudioPlayer, 
@@ -21,8 +20,6 @@ const {
     AudioPlayerStatus, 
     getVoiceConnection 
 } = require('@discordjs/voice');
-
-// --- NHÓM 4: TTS SYSTEM ---
 const discordTTS = require('discord-tts');
 
 // KHỞI TẠO CLIENT VỚI ĐỦ QUYỀN (INTENTS)
