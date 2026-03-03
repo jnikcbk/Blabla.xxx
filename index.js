@@ -288,44 +288,230 @@ client.on('messageCreate', async (message) => {
         }
                 }
 
-    // --- LỆNH !rbgroup: XEM NHÓM ---
+    // --- LỆNH !rbgroup: SOI HỘI NHÓM CHI TIẾT ---
     if (command === 'rbgroup') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Nhập tên người chơi cần xem nhóm.");
+
         try {
-            const u = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [args[0]] });
-            const gRes = await axios.get(`https://groups.roblox.com/v2/users/${u.data.data[0].id}/groups/roles`);
-            const groups = gRes.data.data.slice(0, 15).map(g => `• **${g.group.name}**`).join('\n') || "Không có nhóm.";
-            message.reply(`👥 **Các nhóm của ${args[0]}:**\n${groups}`);
-        } catch (e) { message.reply("❌ Lỗi."); }
+            // 1. Lấy UserId
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [username] });
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            
+            const userId = userRes.data.data[0].id;
+
+            // 2. Lấy danh sách nhóm và ảnh đại diện
+            const [groupsRes, thumbRes] = await Promise.all([
+                axios.get(`https://groups.roblox.com/v2/users/${userId}/groups/roles`),
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png`)
+            ]);
+
+            const groupsData = groupsRes.data.data;
+            const avatarUrl = thumbRes.data.data[0].imageUrl;
+
+            if (groupsData.length === 0) {
+                return message.reply(`👤 **${username}** hiện không tham gia bất kỳ nhóm nào.`);
+            }
+
+            // 3. Phân tích dữ liệu nhóm (Lấy tối đa 10 nhóm nổi bật nhất để tránh dài quá)
+            const groupList = groupsData.slice(0, 10).map(g => {
+                return `🏠 **${g.group.name}**\n   └ 🏷️ *Chức vụ:* \`${g.role.name}\` (Rank: ${g.role.rank})`;
+            }).join('\n\n');
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🏘️ Danh sách nhóm của ${username}`)
+                .setURL(`https://www.roblox.com/users/${userId}/profile`)
+                .setThumbnail(avatarUrl)
+                .setColor(0x2F3136) // Màu xám tối cực sang
+                .setDescription(groupList)
+                .addFields(
+                    { name: "📊 Tổng quan", value: `Đã tham gia **${groupsData.length}** nhóm.`, inline: false }
+                )
+                .setFooter({ text: `Check bởi ${message.author.username} | Dữ liệu thời gian thực` })
+                .setTimestamp();
+
+            // 4. Nút bấm xem tất cả nhóm
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setLabel('XEM TẤT CẢ NHÓM')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://www.roblox.com/users/${userId}/profile#!/groups`)
+            );
+
+            message.reply({ embeds: [embed], components: [row] });
+
+        } catch (e) {
+            console.error(e);
+            message.reply("❌ Lỗi khi trích xuất dữ liệu nhóm từ Roblox.");
+        }
     }
 
-    // --- LỆNH !rbfriends: CHECK BẠN BÈ ---
+    // --- LỆNH !rbfriends: THỐNG KÊ TƯƠNG TÁC ---
     if (command === 'rbfriends') {
-        try {
-            const u = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [args[0]] });
-            const f = await axios.get(`https://friends.roblox.com/v1/users/${u.data.data[0].id}/friends/count`);
-            message.reply(`👥 **${args[0]}** có **${f.data.count}** bạn bè.`);
-        } catch (e) { message.reply("❌ Lỗi."); }
-    }
+        const username = args[0];
+        if (!username) return message.reply("❓ Nhập tên người chơi cần check bạn bè.");
 
-    // --- LỆNH !rbavatar: LẤY ẢNH ---
+        try {
+            // 1. Lấy UserId
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [username] });
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            
+            const userId = userRes.data.data[0].id;
+            const displayName = userRes.data.data[0].displayName;
+
+            // 2. Lấy đồng thời: Số bạn bè, Follower, Following và Ảnh Profile
+            const [friends, followers, followings, thumb] = await Promise.all([
+                axios.get(`https://friends.roblox.com/v1/users/${userId}/friends/count`),
+                axios.get(`https://friends.roblox.com/v1/users/${userId}/followers/count`),
+                axios.get(`https://friends.roblox.com/v1/users/${userId}/followings/count`),
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png`)
+            ]);
+
+            // 3. Tạo Embed chuyên nghiệp
+            const embed = new EmbedBuilder()
+                .setTitle(`👥 Danh sách tương tác: ${username}`)
+                .setURL(`https://www.roblox.com/users/${userId}/friends#!/friends`)
+                .setThumbnail(thumb.data.data[0].imageUrl)
+                .setColor(0x5865F2) // Màu xanh Discord Blurple
+                .addFields(
+                    { name: "🤝 Bạn bè", value: `**${friends.data.count}** / 200`, inline: true },
+                    { name: "📈 Người theo dõi", value: `**${followers.data.count.toLocaleString()}**`, inline: true },
+                    { name: "📉 Đang theo dõi", value: `**${followings.data.count.toLocaleString()}**`, inline: true }
+                )
+                .setFooter({ text: `ID: ${userId} | Check bởi ${message.author.username}` })
+                .setTimestamp();
+
+            // 4. Nút bấm xem danh sách trên Web
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setLabel('XEM DANH SÁCH BẠN BÈ')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://www.roblox.com/users/${userId}/friends#!/friends`)
+            );
+
+            message.reply({ embeds: [embed], components: [row] });
+
+        } catch (e) {
+            console.error(e);
+            message.reply("❌ Lỗi khi lấy dữ liệu bạn bè từ Roblox.");
+        }
+    }
+    // --- LỆNH !rbavatar: LẤY ẢNH AVATAR SIÊU ĐẸP ---
     if (command === 'rbavatar') {
+        const username = args[0];
+        if (!username) return message.reply("❓ Nhập tên người chơi cần lấy ảnh.");
+
         try {
-            const u = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [args[0]] });
-            const res = await axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${u.data.data[0].id}&size=720x720&format=Png`);
-            message.reply(res.data.data[0].imageUrl);
-        } catch (e) { message.reply("❌ Lỗi."); }
+            // 1. Lấy UserId
+            const userRes = await axios.post("https://users.roblox.com/v1/usernames/users", { usernames: [username] });
+            if (!userRes.data.data.length) return message.reply("❌ Không tìm thấy người chơi này.");
+            const userId = userRes.data.data[0].id;
+            const displayName = userRes.data.data[0].displayName;
+
+            // 2. Lấy đồng thời ảnh Toàn thân và ảnh Chân dung (Size lớn nhất 720x720)
+            const [fullBody, headShot] = await Promise.all([
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png&isCircular=false`),
+                axios.get(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=false`)
+            ]);
+
+            const fullImageUrl = fullBody.data.data[0].imageUrl;
+            const headImageUrl = headShot.data.data[0].imageUrl;
+
+            // 3. Tạo Embed
+            const embed = new EmbedBuilder()
+                .setTitle(`📸 Avatar của ${username}`)
+                .setURL(`https://www.roblox.com/users/${userId}/profile`)
+                .setDescription(`👤 **Tên hiển thị:** ${displayName}\n🆔 **User ID:** \`${userId}\``)
+                .setImage(fullImageUrl) // Ảnh to là ảnh toàn thân
+                .setThumbnail(headImageUrl) // Ảnh nhỏ góc trên là ảnh chân dung
+                .setColor(0x00fbff)
+                .setFooter({ text: `Yêu cầu bởi: ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
+                .setTimestamp();
+
+            // 4. Nút bấm để mở ảnh gốc hoặc xem Profile
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setLabel('Mở Ảnh Gốc (HD)')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(fullImageUrl),
+                new ButtonBuilder()
+                    .setLabel('Xem Profile')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(`https://www.roblox.com/users/${userId}/profile`)
+            );
+
+            message.reply({ embeds: [embed], components: [row] });
+
+        } catch (e) {
+            console.error(e);
+            message.reply("❌ Có lỗi xảy ra khi lấy dữ liệu ảnh từ Roblox.");
+        }
+    }
+// --- LỆNH !joinvip: HIỆN NÚT NHẬP LINK ---
+    if (command === 'joinvip') {
+        const embed = new EmbedBuilder()
+            .setTitle("🎟️ KÍCH HOẠT SERVER VIP")
+            .setDescription("Bấm vào nút bên dưới để nhập Link Server VIP. \n*Thông tin sẽ được xử lý riêng tư cho bạn.*")
+            .setColor(0xFFD700);
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('open_vip_modal')
+                .setLabel('NHẬP LINK VIP')
+                .setStyle(ButtonStyle.Primary)
+        );
+
+        message.reply({ embeds: [embed], components: [row] });
+    }
+    
+});
+// --- XỬ LÝ BẢNG NHẬP LIỆU (MODAL) ---
+client.on('interactionCreate', async (interaction) => {
+    // 1. Khi bấm nút để hiện bảng nhập
+    if (interaction.isButton() && interaction.customId === 'open_vip_modal') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+        const modal = new ModalBuilder().setCustomId('vip_modal').setTitle('Nhập Link Server VIP');
+
+        const linkInput = new TextInputBuilder()
+            .setCustomId('vip_link_input')
+            .setLabel("Dán link Server VIP vào đây:")
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder("https://www.roblox.com/games/...")
+            .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder().addComponents(linkInput));
+        return await interaction.showModal(modal);
     }
 
-    // --- LỆNH !joinvip: VÀO SERVER VIP ---
-    if (command === 'joinvip') {
+    // 2. Khi gửi bảng nhập liệu
+    if (interaction.isModalSubmit() && interaction.customId === 'vip_modal') {
+        const link = interaction.fields.getTextInputValue('vip_link_input');
+        
         try {
-            const url = new URL(args[0]);
-            const pid = url.pathname.split('/')[2];
-            const code = url.searchParams.get("privateServerLinkCode");
-            const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('VÀO VIP').setStyle(ButtonStyle.Link).setURL(`roblox://experiences/start?placeId=${pid}&privateServerLinkCode=${code}`));
-            message.reply({ content: "🎟️ Bấm để vào Server VIP:", components: [row] });
-        } catch (e) { message.reply("❌ Link VIP không đúng."); }
+            const urlObj = new URL(link);
+            const placeId = urlObj.pathname.split('/')[2];
+            const vipCode = urlObj.searchParams.get("privateServerLinkCode");
+
+            if (!placeId || !vipCode) {
+                return await interaction.reply({ content: "❌ Link không đúng định dạng Server VIP!", ephemeral: true });
+            }
+
+            const forceVipLink = `roblox://experiences/start?placeId=${placeId}&privateServerLinkCode=${vipCode}`;
+            
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setLabel('VÀO SERVER VIP NGAY').setStyle(ButtonStyle.Link).setURL(forceVipLink)
+            );
+
+            // Nhắn riêng cho người nhập (Chỉ họ mới thấy)
+            await interaction.reply({ 
+                content: `✅ **Đã xác nhận link thành công!**\n📍 Place ID: \`${placeId}\`\nBấm nút dưới đây để bay thẳng vào game:`, 
+                components: [row],
+                ephemeral: true 
+            });
+
+        } catch (e) {
+            await interaction.reply({ content: "❌ Link không hợp lệ, vui lòng kiểm tra lại.", ephemeral: true });
+        }
     }
 });
-
 client.login(process.env.TOKEN);
