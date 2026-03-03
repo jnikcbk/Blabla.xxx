@@ -3,7 +3,8 @@
   "version": "2.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "postinstall": "npm install ffmpeg-static" 
   },
   "dependencies": {
     "discord.js": "^14.14.1",
