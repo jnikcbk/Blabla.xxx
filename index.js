@@ -1,3 +1,4 @@
+// --- NHÓM 1: DISCORD.JS ---
 const { 
     Client, 
     GatewayIntentBits, 
@@ -7,10 +8,12 @@ const {
     ButtonStyle, 
     ActivityType 
 } = require('discord.js');
+
+// --- NHÓM 2: DOTENV & AXIOS (ROBLOX) ---
 require('dotenv').config();
 const axios = require('axios');
 
-// --- CÁC THƯ VIỆN DÀNH CHO VOICE ---
+// --- NHÓM 3: VOICE SYSTEM ---
 const { 
     joinVoiceChannel, 
     createAudioPlayer, 
@@ -18,15 +21,18 @@ const {
     AudioPlayerStatus, 
     getVoiceConnection 
 } = require('@discordjs/voice');
+
+// --- NHÓM 4: TTS SYSTEM ---
 const discordTTS = require('discord-tts');
 
+// KHỞI TẠO CLIENT VỚI ĐỦ QUYỀN (INTENTS)
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates // QUAN TRỌNG: Cần để bot vào voice
+        GatewayIntentBits.GuildVoiceStates // Bắt buộc để dùng lệnh Say/Join
     ]
 });
 
@@ -41,41 +47,42 @@ client.on('messageCreate', async (message) => {
 
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
-// --- LỆNH HELP TỔNG HỢP (ROBLOX + VOICE) ---
+
+    // --- LỆNH HELP TỔNG HỢP (CHỨA TẤT CẢ LỆNH CŨ & MỚI) ---
     if (command === 'help') {
         const embed = new EmbedBuilder()
             .setTitle("🎮 LEVIATHAN BOT - FULL COMMAND MENU")
-            .setColor(0xFF0000)
             .setThumbnail(client.user.displayAvatarURL())
+            .setColor(0xFF0000)
             .addFields(
-                // --- CÁC LỆNH ROBLOX CŨ CỦA BẠN ---
                 { 
                     name: "🚀 ROBLOX - TƯƠNG TÁC", 
-                    value: "`!rbjoin [tên]`: Ép mở App vào thẳng SV mục tiêu đang chơi.\n`!rblog [tên]`: Quét liên tục, báo ngay khi mục tiêu vào game.", 
+                    value: "`!rbjoin [tên]`: Ép vào SV mục tiêu đang chơi.\n`!rblog [tên]`: Báo ngay khi mục tiêu vào game.", 
                     inline: false 
                 },
                 { 
                     name: "🔍 ROBLOX - TRA CỨU", 
-                    value: "`!ttacc [tên]`: Soi profile, ngày tạo, ID.\n`!rbcheck [tên]`: Check nhanh trạng thái.\n`!rbavatar [tên]`: Lấy ảnh chân dung.\n`!rbgroup [tên]`: Xem các nhóm đã tham gia.\n`!rbfriends [tên]`: Đếm số lượng bạn bè.", 
+                    value: "`!ttacc [tên]`: Soi profile, ngày tạo, ID.\n`!rbcheck [tên]`: Check trạng thái Online.\n`!rbavatar [tên]`: Lấy ảnh chân dung.\n`!rbgroup [tên]`: Xem các nhóm đã tham gia.\n`!rbfriends [tên]`: Đếm số lượng bạn bè.", 
                     inline: false 
                 },
-                { 
-                    name: "🔐 TIỆN ÍCH CŨ", 
-                    value: "`!joinvip [link]`: Tạo nút Join nhanh cho link Server VIP.\n`!logacc`: Nút đăng nhập nhanh.\n`!laymk [tên]`: Lệnh troll lấy mật khẩu.", 
-                    inline: false 
-                },
-                // --- 3 LỆNH VOICE MỚI THÊM ---
                 { 
                     name: "🗣️ HỆ THỐNG VOICE (NEW)", 
-                    value: "`!join`: Mời bot vào kênh Voice của bạn.\n`!say [nội dung]`: Bot nói theo ý bạn (Giọng chị Google).\n`!leave`: Đuổi bot khỏi Voice ngay lập tức.", 
+                    value: "`!join`: Mời bot vào kênh thoại.\n`!say [lời]`: Bot nói theo ý bạn (Giọng chị Google).\n`!leave`: Đuổi bot khỏi kênh thoại.", 
+                    inline: false 
+                },
+                { 
+                    name: "🔐 TIỆN ÍCH & TROLL", 
+                    value: "`!laymk [tên]`: Lệnh troll lấy mật khẩu.\n`!joinvip [link]`: Nút Join nhanh cho SV VIP.", 
                     inline: false 
                 }
             )
-            .setFooter({ text: `Yêu cầu bởi: ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
+            .setFooter({ text: `Yêu cầu bởi: ${message.author.username}` })
             .setTimestamp();
 
         return message.reply({ embeds: [embed] });
     }
+
+    // --- SAU DÒNG NÀY SẾP DÁN CÁC LỆNH IF (SAY, JOIN, LEAVE, RBCHECK...) ---
     
 // --- LỆNH !rbcheck: PHIÊN BẢN VIP ---
     if (command === 'rbcheck') {
