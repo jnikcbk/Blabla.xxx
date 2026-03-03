@@ -19,23 +19,46 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
     if (!message.content.startsWith('!')) return;
-
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
+const discordTTS = require('discord-tts');
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
-
-    // --- LỆNH HELP (CHỈ CÒN ROBLOX) ---
+// --- LỆNH HELP TỔNG HỢP (ROBLOX + VOICE) ---
     if (command === 'help') {
         const embed = new EmbedBuilder()
-            .setTitle("🎮 ROBLOX COMMAND MENU")
+            .setTitle("🎮 LEVIATHAN BOT - FULL COMMAND MENU")
             .setColor(0xFF0000)
+            .setThumbnail(client.user.displayAvatarURL())
             .addFields(
-                { name: "🚀 Ép Join", value: "`!rbjoin [tên]`: Ép mở App vào thẳng SV mục tiêu đang chơi." },
-                { name: "📡 Theo Dõi", value: "`!rblog [tên]`: Quét liên tục, báo ngay khi mục tiêu vào game." },
-                { name: "🔍 Tra Cứu", value: "`!ttacc [tên]`: Soi profile, ngày tạo, ID.\n`!rbcheck [tên]`: Check nhanh trạng thái.\n`!rbavatar [tên]`: Lấy ảnh chân dung.\n`!rbgroup [tên]`: Xem các nhóm đã tham gia.\n`!rbfriends [tên]`: Đếm số lượng bạn bè." },
-                { name: "🔐 Tiện Ích", value: "`!joinvip [link]`: Tạo nút Join nhanh cho link Server VIP.\n`!logacc`: Nút đăng nhập nhanh." }
-            );
+                // --- CÁC LỆNH ROBLOX CŨ CỦA BẠN ---
+                { 
+                    name: "🚀 ROBLOX - TƯƠNG TÁC", 
+                    value: "`!rbjoin [tên]`: Ép mở App vào thẳng SV mục tiêu đang chơi.\n`!rblog [tên]`: Quét liên tục, báo ngay khi mục tiêu vào game.", 
+                    inline: false 
+                },
+                { 
+                    name: "🔍 ROBLOX - TRA CỨU", 
+                    value: "`!ttacc [tên]`: Soi profile, ngày tạo, ID.\n`!rbcheck [tên]`: Check nhanh trạng thái.\n`!rbavatar [tên]`: Lấy ảnh chân dung.\n`!rbgroup [tên]`: Xem các nhóm đã tham gia.\n`!rbfriends [tên]`: Đếm số lượng bạn bè.", 
+                    inline: false 
+                },
+                { 
+                    name: "🔐 TIỆN ÍCH CŨ", 
+                    value: "`!joinvip [link]`: Tạo nút Join nhanh cho link Server VIP.\n`!logacc`: Nút đăng nhập nhanh.\n`!laymk [tên]`: Lệnh troll lấy mật khẩu.", 
+                    inline: false 
+                },
+                // --- 3 LỆNH VOICE MỚI THÊM ---
+                { 
+                    name: "🗣️ HỆ THỐNG VOICE (NEW)", 
+                    value: "`!join`: Mời bot vào kênh Voice của bạn.\n`!say [nội dung]`: Bot nói theo ý bạn (Giọng chị Google).\n`!leave`: Đuổi bot khỏi Voice ngay lập tức.", 
+                    inline: false 
+                }
+            )
+            .setFooter({ text: `Yêu cầu bởi: ${message.author.username}`, iconURL: message.author.displayAvatarURL() })
+            .setTimestamp();
+
         return message.reply({ embeds: [embed] });
     }
+    
 // --- LỆNH !rbcheck: PHIÊN BẢN VIP ---
     if (command === 'rbcheck') {
         const username = args[0];
@@ -139,7 +162,68 @@ client.on('messageCreate', async (message) => {
             });
         });
     }
-    
+   // --- LỆNH !say: BOT VÀO VOICE VÀ NÓI THEO Ý MUỐN ---
+    if (command === 'say') {
+        const noiDung = args.join(" ");
+        if (!noiDung) return message.reply("❓ Sếp muốn em nói gì thì phải gõ chữ ra chứ!");
+
+        const voiceChannel = message.member.voice.channel;
+        if (!voiceChannel) return message.reply("❌ Sếp vào Voice trước đi em mới vào nói theo được.");
+
+        try {
+            // Kết nối vào Voice
+            const connection = joinVoiceChannel({
+                channelId: voiceChannel.id,
+                guildId: message.guild.id,
+                adapterCreator: message.guild.voiceAdapterCreator,
+            });
+
+            // Chuyển văn bản thành giọng nói (Tiếng Việt)
+            const stream = discordTTS.getVoiceStream(noiDung, { lang: 'vi' });
+            const resource = createAudioResource(stream);
+            const player = createAudioPlayer();
+
+            player.play(resource);
+            connection.subscribe(player);
+
+            message.react('✅');
+
+            // Khi nói xong thì tự động nghỉ (Idle) nhưng không thoát 
+            // để sếp có thể dùng lệnh !leave chủ động
+            player.on(AudioPlayerStatus.Idle, () => {
+                player.stop();
+            });
+
+        } catch (error) {
+            console.error(error);
+            message.reply("⚠️ Nghẹn họng rồi sếp ơi, không nói được!");
+        }
+    }
+    // --- LỆNH !join: MỜI BOT VÀO VOICE ---
+    if (command === 'join') {
+        const voiceChannel = message.member.voice.channel;
+        if (!voiceChannel) return message.reply("❌ Sếp phải vào một kênh voice trước thì em mới vào theo được!");
+
+        joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: message.guild.id,
+            adapterCreator: message.guild.voiceAdapterCreator,
+        });
+
+        message.reply("✅ Đã có mặt tại kênh voice của sếp!");
+    }
+
+    // --- LỆNH !leave: ĐUỔI BOT KHỎI VOICE ---
+    if (command === 'leave' || command === 'out') {
+        const connection = require('@discordjs/voice').getVoiceConnection(message.guild.id);
+        
+        if (connection) {
+            connection.destroy();
+            message.reply("👋 Tạm biệt sếp, em đi đây!");
+        } else {
+            message.reply("❌ Em có ở trong kênh voice nào đâu mà đuổi!");
+        }
+    } 
 // --- LỆNH !rbjoin: PHIÊN BẢN ÉP JOIN SIÊU CẤP ---
     if (command === 'rbjoin') {
         const username = args[0];
