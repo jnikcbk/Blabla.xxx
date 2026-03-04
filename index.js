@@ -184,54 +184,39 @@ client.on('messageCreate', async (message) => {
             });
         });
     }
-  if (command === 'say') {
+  const gTTS = require('gtts'); // Nhớ khai báo ở đầu file
+
+// ... (trong phần client.on messageCreate)
+
+    if (command === 'say') {
         const noiDung = args.join(" ");
-        if (!noiDung) return message.reply("❓ Sếp muốn em nói gì thì phải gõ chữ ra chứ!");
+        if (!noiDung) return message.reply("❓ Sếp muốn em nói gì?");
 
         const voiceChannel = message.member.voice.channel;
-        if (!voiceChannel) return message.reply("❌ Sếp vào Voice trước đi em mới vào nói theo được.");
+        if (!voiceChannel) return message.reply("❌ Sếp vào Voice trước đi em mới nói được.");
 
         try {
-            // 1. Khởi tạo hoặc lấy kết nối hiện tại
-            let connection = getVoiceConnection(message.guild.id);
-            
-            if (!connection) {
-                connection = joinVoiceChannel({
-                    channelId: voiceChannel.id,
-                    guildId: message.guild.id,
-                    adapterCreator: message.guild.voiceAdapterCreator,
-                    selfDeaf: false, // Để bot không bị điếc (tăng độ ổn định)
-                });
-            }
-
-            // 2. Lấy stream từ Google TTS
-            const stream = discordTTS.getVoiceStream(noiDung, { lang: 'vi' });
-
-            // 3. Tạo Audio Resource (Bản chuẩn cho Railway)
-            const resource = createAudioResource(stream, { 
-                inputType: require('@discordjs/voice').StreamType.Arbitrary,
-                inlineVolume: true 
+            const connection = joinVoiceChannel({
+                channelId: voiceChannel.id,
+                guildId: message.guild.id,
+                adapterCreator: message.guild.voiceAdapterCreator,
             });
 
-            // Chỉnh âm lượng (tùy chọn)
-            if (resource.volume) resource.volume.setVolume(1.0);
+            // Tạo luồng âm thanh bằng gTTS (Rất ổn định trên Railway)
+            const gtts = new gTTS(noiDung, 'vi');
+            const resource = createAudioResource(gtts.stream(), {
+                inputType: require('@discordjs/voice').StreamType.Arbitrary,
+                inlineVolume: true
+            });
 
-            // 4. Tạo Player và phát
             const player = createAudioPlayer();
             player.play(resource);
             connection.subscribe(player);
 
             message.react('✅');
 
-            // Xử lý khi nói xong hoặc gặp lỗi
-            player.on(AudioPlayerStatus.Idle, () => {
-                // Giữ kết nối nhưng dừng player để tiết kiệm RAM
-                player.stop();
-            });
-
             player.on('error', error => {
-                console.error(`[Lỗi Audio]: ${error.message}`);
-                message.reply("⚠️ Có lỗi khi xử lý giọng nói!");
+                console.error(`[Lỗi Audio Railway]: ${error.message}`);
             });
 
         } catch (error) {
