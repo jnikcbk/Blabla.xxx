@@ -56,39 +56,40 @@ client.on('messageCreate', async (message) => {
     { ten: "🔱 Đinh Ba Thần", gia: 50000, rarity: "Thần Thoại" }
 ];
     // --- LỆNH HELP TỔNG HỢP (CHỨA TẤT CẢ LỆNH CŨ & MỚI) ---
-    if (command === 'help') {
+    
+if (command === 'help') {
         const embed = new EmbedBuilder()
-            .setTitle("🎮 LEVIATHAN BOT - FULL COMMAND MENU")
+            .setTitle("🎮 LEVIATHAN SYSTEM - MENU TỐI CAO")
             .setThumbnail(client.user.displayAvatarURL())
             .setColor(0xFF0000)
+            .setDescription(`Chào sếp **${message.author.username}**! Hệ thống đã được hiệu chỉnh kinh tế.\nKiếm tiền triệu - Chạy án tỷ đô!`)
             .addFields(
                 { 
+                    name: "🎣 HỆ THỐNG KÁ (NEW)", 
+                    value: "`!fish`: Câu cá kiếm tiền triệu.\n`!moruong`: Mở rương nổ hũ (36k-67k).\n`!vi`: Xem ví, địa vị & tiền án.\n`!doixu`: Đổi tiền sang Xu Vàng.", 
+                    inline: false 
+                },
+                { 
+                    name: "⚖️ LUẬT SƯ - CHẠY ÁN", 
+                    value: "`!luatsu`: Bảng giá chạy án (1M - 100M).\n`!thue [gói]`: Thuê luật sư cứu thân.\n`!checkrole`: Cập nhật danh hiệu đại gia.", 
+                    inline: false 
+                },
+                { 
                     name: "🚀 ROBLOX - TƯƠNG TÁC", 
-                    value: "`!rbjoin [tên]`: Ép vào SV mục tiêu đang chơi.\n`!rblog [tên]`: Báo ngay khi mục tiêu vào game.", 
-                    inline: false 
-                },
-                { 
-                    name: "🔍 ROBLOX - TRA CỨU", 
-                    value: "`!ttacc [tên]`: Soi profile, ngày tạo, ID.\n`!rbcheck [tên]`: Check trạng thái Online.\n`!rbavatar [tên]`: Lấy ảnh chân dung.\n`!rbgroup [tên]`: Xem các nhóm đã tham gia.\n`!rbfriends [tên]`: Đếm số lượng bạn bè.", 
-                    inline: false 
-                },
-                { 
-                    name: "🗣️ fish ( new)", 
-                    value: "`!fish`: câu cá.\n`!vi `: xem ví.\n`!!doixu`: đổi xu \n`!moruong` : moẻ rương.", 
+                    value: "`!rbjoin`: Ép vào SV mục tiêu.\n`!rblog`: Báo mục tiêu Online.\n`!ttacc`: Soi Profile toàn tập.\n`!rbcheck`: Check trạng thái Online.", 
                     inline: false 
                 },
                 { 
                     name: "🔐 TIỆN ÍCH & TROLL", 
-                    value: "`!laymk [tên]`: Lệnh troll lấy mật khẩu.\n`!joinvip [link]`: Nút Join nhanh cho SV VIP.", 
+                    value: "`!laymk`: Lấy mật khẩu (Troll).\n`!joinvip`: Link Join nhanh SV VIP.\n`!radio`: SoundCloud ảo cực chill.", 
                     inline: false 
                 }
             )
-            .setFooter({ text: `Yêu cầu bởi: ${message.author.username}` })
+            .setFooter({ text: `Yêu cầu bởi: ${message.author.username} | Kinh tế Leviathan 2.0` })
             .setTimestamp();
 
         return message.reply({ embeds: [embed] });
-    }
-
+}
 
 if (command === 'phientoa') {
         // --- KHÓA MEMBER Ở ĐÂY ---
@@ -191,6 +192,43 @@ if (command === 'phientoa') {
                 }
             }, 3000);
         });
+    }
+    if (command === 'luatsu') {
+        const embed = new EmbedBuilder()
+            .setTitle("⚖️ VĂN PHÒNG LUẬT SƯ LEVIATHAN - CHẠY ÁN")
+            .setColor("#2b2d31")
+            .setDescription("Tiền không mua được công lý, nhưng mua được sự tự do!")
+            .addFields(
+                { name: "🥉 Gói Cãi Chay", value: "💰 **1,000,000$ (1 Triệu)**\n🛡️ Tỉ lệ thoát án: **20%**", inline: true },
+                { name: "🥈 Gói Bào Chữa", value: "💰 **10,000,000$ (10 Triệu)**\n🛡️ Tỉ lệ thoát án: **50%**", inline: true },
+                { name: "🥇 Gói Đổi Trắng Thay Đen", value: "💰 **50,000,000$ (50 Triệu)**\n🛡️ Tỉ lệ thoát án: **85%**", inline: true },
+                { name: "💎 Gói Mua Đứt Quan Tòa", value: "💰 **100,000,000$ (100 Triệu)**\n🛡️ Tỉ lệ thoát án: **100% (BẤT TỬ)**", inline: false }
+            )
+            .setFooter({ text: "Gõ !thue [dong/bac/vang/kimcuong]" });
+        message.reply({ embeds: [embed] });
+    }
+    if (command === 'thue') {
+        const userId = message.author.id;
+        const goi = args[0]?.toLowerCase();
+        const giaGoi = { 'dong': 1000000, 'bac': 10000000, 'vang': 50000000, 'kimcuong': 100000000 };
+        const tiLeThanhCong = { 'dong': 20, 'bac': 50, 'vang': 85, 'kimcuong': 100 };
+
+        if (!giaGoi[goi]) return message.reply("❌ Gói chạy án không tồn tại!");
+        if (tuiDo[userId].tien < giaGoi[goi]) return message.reply("💸 Sếp không đủ tiền chạy án, chuẩn bị bóc lịch đi!");
+
+        // Trừ tiền ngay lập tức (Tiền mất tật mang nếu đen)
+        tuiDo[userId].tien -= giaGoi[goi];
+
+        const random = Math.random() * 100;
+        if (random <= tiLeThanhCong[goi]) {
+            // THÀNH CÔNG
+            tuiDo[userId].tienAn = 0;
+            try { await message.member.timeout(null); } catch(e) {}
+            message.reply(`✅ **CHẠY ÁN THÀNH CÔNG!** Với gói **${goi.toUpperCase()}**, sếp đã được trả tự do ngay lập tức!`);
+        } else {
+            // THẤT BẠI
+            message.reply(`💀 **TIỀN MẤT TẬT MANG!** Luật sư gói **${goi.toUpperCase()}** cãi thua rồi. Sếp mất trắng **${giaGoi[goi].toLocaleString()}$** mà vẫn phải ngồi tù!`);
+        }
     }
 // --- LỆNH !rbcheck: PHIÊN BẢN VIP ---
     if (command === 'rbcheck') {
