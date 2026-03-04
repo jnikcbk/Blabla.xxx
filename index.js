@@ -33,6 +33,28 @@ client.on('messageCreate', async (message) => {
 
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
+   const khoVatPham = [
+    // 🗑️ RÁC (30% - Không bán được)
+    { ten: "👟 Giày cũ rách", gia: 0 }, { ten: "🥫 Lon nước rỉ sét", gia: 0 },
+    { ten: "🪵 Khúc gỗ mục", gia: 0 }, { ten: "🌿 Tảo biển độc", gia: 0 },
+    { ten: "🧱 Viên gạch vỡ", gia: 0 }, { ten: "🧴 Chai nhựa rỗng", gia: 0 },
+
+    // 🐟 CÁ THƯỜNG (50% - Tổng hợp đủ các loại cá sếp muốn)
+    { ten: "🐟 Cá Rô", gia: 100 }, { ten: "🐠 Cá Hề", gia: 120 }, { ten: "🐡 Cá Nóc", gia: 150 },
+    { ten: "🐟 Cá Chép", gia: 200 }, { ten: "🐟 Cá Thu", gia: 250 }, { ten: "🐟 Cá Trắm", gia: 300 },
+    { ten: "🐟 Cá Linh", gia: 80 }, { ten: "🐟 Cá Sặc", gia: 90 }, { ten: "🐟 Cá Bống", gia: 110 },
+    { ten: "🐟 Cá Tai Tượng", gia: 400 }, { ten: "🐟 Cá Lóc", gia: 350 }, { ten: "🐟 Cá Trê", gia: 320 },
+    // ... (Sếp cứ copy thêm tên cá vào đây cho đủ 100 con)
+
+    // ✨ CÁ HIẾM (15%)
+    { ten: "🦈 Cá Mập Con", gia: 2500 }, { ten: "🐬 Cá Heo", gia: 5000 },
+    { ten: "🦈 Cá Kiếm", gia: 7000 }, { ten: "🦑 Mực Khổng Lồ", gia: 4500 },
+
+    // 📦 RƯƠNG BÁU (5% - Tách riêng logic)
+    { ten: "🎁 Rương Gỗ Cổ", loai: "ruong" },
+    { ten: "💎 Rương Kim Cương", loai: "ruong" },
+    { ten: "🔱 Đinh Ba Thần", gia: 50000, rarity: "Thần Thoại" }
+];
     // --- LỆNH HELP TỔNG HỢP (CHỨA TẤT CẢ LỆNH CŨ & MỚI) ---
     if (command === 'help') {
         const embed = new EmbedBuilder()
@@ -52,7 +74,7 @@ client.on('messageCreate', async (message) => {
                 },
                 { 
                     name: "🗣️ fish ( new)", 
-                    value: "`!fish`: câu cá.\n`!vi `: xem ví.\n`!!doixu`: đổi xu.", 
+                    value: "`!fish`: câu cá.\n`!vi `: xem ví.\n`!!doixu`: đổi xu \n`!moruong` : moẻ rương.", 
                     inline: false 
                 },
                 { 
@@ -150,7 +172,7 @@ if (command === 'phientoa') {
                 await loadingMsg.delete();
                 if (coToi > voToi) {
                     tuiDo[target.id].tienAn += 1; // Ghi vào sổ đen
-                    const fine = 500; // Phạt tiền nếu có tiền trong ví
+                    const fine = 5000; // Phạt tiền nếu có tiền trong ví
                     let punishmentMsg = `⚖️ **TUYÊN ÁN:** Bị cáo ${target} bị tuyên bố **CÓ TỘI**.\n`;
                     
                     if (tuiDo[target.id].tien >= fine) {
@@ -279,29 +301,56 @@ if (command === 'phientoa') {
 
   if (command === 'fish') {
         const userId = message.author.id;
-        if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, xu: 0, tongCa: 0 };
+        // Khởi tạo túi đồ (phải có biến ruong)
+        if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, xu: 0, tongCa: 0, ruong: 0 };
 
-        const tiLe = Math.random();
-        let vatPham;
+        const ngauNhien = khoVatPham[Math.floor(Math.random() * khoVatPham.length)];
+
+        // TRƯỜNG HỢP 1: CÂU TRÚNG RƯƠNG (Cất vào kho, không mở)
+        if (ngauNhien.loai === "ruong") {
+            tuiDo[userId].ruong = (tuiDo[userId].ruong || 0) + 1;
+            return message.reply(`📦 | **KHO BÁU!** Sếp vừa câu được **${ngauNhien.ten}**!\n👉 Rương đã được cất vào kho. Gõ \`!moruong\` để mở.`);
+        }
+
+        // TRƯỜNG HỢP 2: CÂU TRÚNG RÁC (Gia = 0)
+        if (ngauNhien.gia === 0) {
+            return message.reply(`🎣 | Kéo cần lên... chỉ thấy một **${ngauNhien.ten}** 🗑️. Đen quá sếp!`);
+        }
+
+        // TRƯỜNG HỢP 3: CÂU TRÚNG CÁ
+        tuiDo[userId].tien += ngauNhien.gia;
+        tuiDo[userId].tongCa += 1;
         
-        if (tiLe < 0.05) vatPham = { name: "Cá Mập Siêu Cấp 🦈", price: 1500 };
-        else if (tiLe < 0.2) vatPham = { name: "Cá Ngừ Đại Dương 🐟", price: 400 };
-        else if (tiLe < 0.5) vatPham = { name: "Cá Rô Phi 🐠", price: 150 };
-        else if (tiLe < 0.8) vatPham = { name: "Cá Lòng Tong 🐟", price: 30 };
-        else vatPham = { name: "Chiếc Giày Rách 👞", price: 0 };
+        let thongBao = `🎣 | **${message.author.username}** câu được **${ngauNhien.ten}**! Bán được **${ngauNhien.gia.toLocaleString()}$**.`;
+        if (ngauNhien.rarity) thongBao = `✨ | **HUYỀN THOẠI!** Sếp trục vớt được **${ngauNhien.ten}** giá **${ngauNhien.gia.toLocaleString()}$**!`;
+        
+        message.reply(thongBao);
+  }
+    if (command === 'moruong') {
+        const userId = message.author.id;
+        if (!tuiDo[userId] || !tuiDo[userId].ruong || tuiDo[userId].ruong <= 0) {
+            return message.reply("❌ Trong kho không có cái rương nào cả sếp ơi! Đi câu đi.");
+        }
 
-        const msg = await message.reply("🎣 Sếp đang quăng cần... chờ chút nha...");
+        // Trừ rương
+        tuiDo[userId].ruong -= 1;
 
-        setTimeout(() => {
-            if (vatPham.price > 0) {
-                tuiDo[userId].tien += vatPham.price;
-                tuiDo[userId].tongCa += 1;
-                msg.edit(`✨ **Dính cá!** Sếp câu được **${vatPham.name}**.\n💰 Bán được: **${vatPham.price}$**. Gõ \`!vi\` để xem túi tiền!`);
-            } else {
-                msg.edit(`👞 **Hẻo!** Câu trúng cái **${vatPham.name}**. Không bán được đồng nào!`);
-            }
-        }, 2000);
-    } 
+        // Quà ngẫu nhiên
+        const tile = Math.random() * 100;
+        let phanThuong = "";
+
+        if (tile < 80) { // 80% ra tiền
+            const tien = Math.floor(Math.random() * 20000) + 5000;
+            tuiDo[userId].tien += tien;
+            phanThuong = `💰 **${tien.toLocaleString()}$ tiền mặt**`;
+        } else { // 20% ra Xu Vàng
+            const xu = Math.floor(Math.random() * 10) + 5;
+            tuiDo[userId].xu += xu;
+            phanThuong = `✨ **${xu} Xu Vàng**`;
+        }
+
+        message.reply(`🎁 **MỞ RƯƠNG:** Sếp khui rương thành công và nhận được: ${phanThuong}!`);
+    }
     if (command === 'doixu') {
         const userId = message.author.id;
         
@@ -322,21 +371,45 @@ if (command === 'phientoa') {
     }
     if (command === 'vi') {
         const userId = message.author.id;
-        const data = tuiDo[userId] || { tien: 0, xu: 0, tongCa: 0 };
+        
+        // Khởi tạo dữ liệu mặc định nếu người dùng mới tinh chưa có túi đồ
+        if (!tuiDo[userId]) {
+            tuiDo[userId] = { 
+                tien: 0, 
+                xu: 0, 
+                tongCa: 0, 
+                ruong: 0, 
+                tienAn: 0 
+            };
+        }
 
-        const embed = new EmbedBuilder()
+        const data = tuiDo[userId];
+
+        const embedVi = new EmbedBuilder()
             .setTitle(`🏦 TÀI KHOẢN CỦA ${message.author.username.toUpperCase()}`)
-            .setColor(0x00FF00)
-            .setThumbnail(message.author.displayAvatarURL())
+            .setColor(0x00FF00) // Màu xanh lá cho giàu sang
+            .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
             .addFields(
-                { name: "💵 Tiền mặt ($)", value: `\`${data.tien}$\``, inline: true },
-                { name: "🪙 Xu Vàng", value: `\`${data.xu} Xu\``, inline: true },
-                { name: "📊 Tổng số cá", value: `\`${data.tongCa} con\``, inline: true }
+                { 
+                    name: "💰 Tài Chính", 
+                    value: `💵 Tiền mặt: **${(data.tien || 0).toLocaleString()}$**\n✨ Xu Vàng: **${data.xu || 0} Xu**`, 
+                    inline: false 
+                },
+                { 
+                    name: "🎣 Kho Đồ Câu Cá", 
+                    value: `🐟 Tổng cá đã câu: **${data.tongCa || 0} con**\n📦 Rương báu hiện có: **${data.ruong || 0} cái**`, 
+                    inline: true 
+                },
+                { 
+                    name: "⚖️ Hồ Sơ Pháp Lý", 
+                    value: `🔨 Tiền án: **${data.tienAn || 0} lần**`, 
+                    inline: true 
+                }
             )
-            .setFooter({ text: "Sếp chăm đi câu cá để đổi thêm Xu nhé!" })
+            .setFooter({ text: "Sếp chăm chỉ câu cá để làm giàu nhé! 💸" })
             .setTimestamp();
 
-        message.reply({ embeds: [embed] });
+        message.reply({ embeds: [embedVi] });
     }
 // --- LỆNH !rbjoin: PHIÊN BẢN ÉP JOIN SIÊU CẤP ---
     if (command === 'rbjoin') {
