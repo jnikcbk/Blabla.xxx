@@ -51,8 +51,8 @@ client.on('messageCreate', async (message) => {
                     inline: false 
                 },
                 { 
-                    name: "🗣️ HỆ THỐNG VOICE (NEW)", 
-                    value: "`!join`: Mời bot vào kênh thoại.\n`!say [lời]`: Bot nói theo ý bạn (Giọng chị Google).\n`!leave`: Đuổi bot khỏi kênh thoại.", 
+                    name: "🗣️ fish ( new)", 
+                    value: "`!fish`: câu cá.\n`!vi `: xem ví.\n`!!doixu`: đổi xu.", 
                     inline: false 
                 },
                 { 
@@ -68,7 +68,97 @@ client.on('messageCreate', async (message) => {
     }
 
 
-    
+    if (command === 'phientoa') {
+        const target = message.mentions.members.first();
+        const toiDanh = args.slice(1).join(" ") || "Tội không thể xác định";
+
+        if (!target) return message.reply("🔨 **Lệnh của Thẩm phán:** Tag kẻ bị cáo ngoại phạm vào đây! (VD: !phientoa @Ten Tội phản bội)");
+        if (target.id === message.author.id) return message.reply("Sếp định tự đưa mình ra tòa à? Đừng tự hủy thế chứ! 😂");
+
+        // 1. Khởi tạo trạng thái phiên tòa
+        let coToi = 0;
+        let voToi = 0;
+        const votedUsers = new Set();
+
+        const createEmbed = (status = "ĐANG XÉT XỬ...") => {
+            const total = coToi + voToi || 1;
+            const coToiPercent = Math.round((coToi / (total === 0 ? 1 : total)) * 100);
+            const voToiPercent = 100 - coToiPercent;
+            
+            // Thanh tiến trình trực quan
+            const barLength = 10;
+            const guiltyBar = "🟥".repeat(Math.round((coToi / total) * barLength));
+            const innocentBar = "🟩".repeat(barLength - guiltyBar.length / 2); // fix emoji length
+
+            return new EmbedBuilder()
+                .setTitle("⚖️ TÒA ÁN TỐI CAO LEVIATHAN")
+                .setThumbnail("https://i.imgur.com/vH9ZJ49.png") // Icon búa tòa án
+                .setColor(status === "CÓ TỘI" ? 0xFF0000 : (status === "VÔ TỘI" ? 0x00FF00 : 0xFFD700))
+                .setDescription(`⚖️ **Phiên tòa xét xử bị cáo:** ${target}\n📜 **Tội danh:** \`${toiDanh}\`\n\n**Trạng thái:** \`${status}\``)
+                .addFields(
+                    { name: `🟥 CÓ TỘI [${coToi}]`, value: `📊 ${coToiPercent}%`, inline: true },
+                    { name: `🟩 VÔ TỘI [${voToi}]`, value: `📊 ${voToiPercent}%`, inline: true },
+                    { name: "🗳️ Cán cân công lý", value: `\`${guiltyBar}${innocentBar}\``, inline: false }
+                )
+                .setFooter({ text: "Phiên tòa sẽ kết thúc sau 60 giây. Mọi quyết định của nhân dân là tối cao!" })
+                .setTimestamp();
+        };
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('guilty').setLabel('CÓ TỘI').setStyle(ButtonStyle.Danger).setEmoji('🔨'),
+            new ButtonBuilder().setCustomId('innocent').setLabel('VÔ TỘI').setStyle(ButtonStyle.Success).setEmoji('🕊️')
+        );
+
+        const response = await message.channel.send({ 
+            content: `📢 **THÔNG BÁO:** Một phiên tòa vừa được mở ra bởi Thẩm phán **${message.author.username}**!`,
+            embeds: [createEmbed()], 
+            components: [row] 
+        });
+
+        const collector = response.createMessageComponentCollector({ time: 60000 });
+
+        collector.on('collect', async i => {
+            if (votedUsers.has(i.user.id)) return i.reply({ content: "Sếp đã biểu quyết rồi, không được gian lận!", ephemeral: true });
+            
+            votedUsers.add(i.user.id);
+            if (i.customId === 'guilty') coToi++;
+            else voToi++;
+
+            await i.update({ embeds: [createEmbed()] });
+        });
+
+        collector.on('end', async () => {
+            let finalStatus = "HÒA GIẢI";
+            let punishment = "";
+
+            if (coToi > voToi) {
+                finalStatus = "CÓ TỘI";
+                punishment = `\n🔨 **HÌNH PHẠT:** Bị cáo ${target} sẽ bị **cách ly (Timeout) 1 phút** để sám hối!`;
+                
+                // Thực hiện Timeout thật nếu Bot có quyền
+                try {
+                    await target.timeout(60000, `Bị tòa án nhân dân kết tội: ${toiDanh}`);
+                } catch (e) {
+                    punishment += "\n*(Lỗi: Bot thiếu quyền 'Moderate Members' để thực thi hình phạt)*";
+                }
+            } else if (voToi > coToi) {
+                finalStatus = "VÔ TỘI";
+                punishment = `\n🕊️ **QUYẾT ĐỊNH:** Trả tự do cho ${target} ngay tại tòa vì sự trong sạch!`;
+            } else {
+                finalStatus = "KHÔNG ĐỦ BẰNG CHỨNG";
+                punishment = "\n⚖️ **QUYẾT ĐỊNH:** Do số phiếu bằng nhau, bị cáo được hưởng quyền lợi nghi ngờ.";
+            }
+
+            const finalEmbed = createEmbed(finalStatus);
+            await response.edit({ 
+                content: `🚨 **PHIÊN TÒA ĐÃ KẾT THÚC!**`,
+                embeds: [finalEmbed], 
+                components: [] 
+            });
+
+            message.channel.send(`🔨 **TUYÊN ÁN:** ${punishment}`);
+        });
+    }
     
 // --- LỆNH !rbcheck: PHIÊN BẢN VIP ---
     if (command === 'rbcheck') {
@@ -209,7 +299,7 @@ client.on('messageCreate', async (message) => {
         if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, xu: 0, tongCa: 0 };
 
         const data = tuiDo[userId];
-        const soLuongXu = parseInt(args[0]) || 1; 
+        const soLuongXu = parseInt(args[0]) || 10; 
         const giaXu = 1000; 
 
         if (data.tien < (giaXu * soLuongXu)) {
