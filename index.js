@@ -68,13 +68,23 @@ client.on('messageCreate', async (message) => {
     }
 
 
-   if (command === 'phientoa') {
+if (command === 'phientoa') {
+        // --- KHÓA MEMBER Ở ĐÂY ---
+        const isAdmin = message.member.permissions.has('ManageGuild'); // Có quyền quản lý server
+        const isOwner = message.author.id === message.guild.ownerId;   // Là chủ server
+
+        if (!isAdmin && !isOwner) {
+            return message.reply("🚫 **Quyền lực hạn chế:** Chỉ Admin hoặc Chủ Server mới có quyền mở phiên tòa xét xử!");
+        }
+        // ------------------------
+
         const target = message.mentions.members.first();
         const toiDanh = args.slice(1).join(" ") || "Tội phá hoại sự bình yên của server";
 
         if (!target) return message.reply("🔨 **Lệnh của Thẩm phán:** Tag bị cáo vào tòa! (VD: !phientoa @Ten Tội nói nhiều)");
         if (target.id === message.author.id) return message.reply("Sếp định tự đưa mình ra tòa à? Công lý không cho phép! 😂");
 
+        // ... các đoạn code xử lý phiên tòa (Embed, Button, Collector) tiếp tục ở dưới ...
         // Khởi tạo dữ liệu tòa án cho người bị hại nếu chưa có
         if (!tuiDo[target.id]) tuiDo[target.id] = { tien: 0, xu: 0, tongCa: 0, tienAn: 0 };
 
