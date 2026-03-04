@@ -9,7 +9,8 @@ const {
 } = require('discord.js');
 require('dotenv').config();
 const axios = require('axios');
-
+// Biến này dùng để lưu tiền và túi đồ của anh em
+const tuiDo = {};
 // THÊM DÒNG NÀY ĐỂ FIX LỖI KHÔNG NÓI TRÊN RAILWAY
 const ffmpeg = require('ffmpeg-static');
 
@@ -396,7 +397,61 @@ client.on('messageCreate', async (message) => {
             message.reply("❌ Lỗi: Không thể lấy dữ liệu từ Roblox. Tài khoản có thể đã bị xóa hoặc API lag.");
         }
                 }
+if (command === 'fish') {
+        const userId = message.author.id;
 
+        // Nếu sếp mới câu lần đầu, tạo "biến" hồ sơ cho sếp
+        if (!tuiDo[userId]) {
+            tuiDo[userId] = { tien: 0, ca: 0, tui: [] };
+        }
+
+        const listCa = [
+            { icon: '🐟', name: 'Cá Rô', price: 10 },
+            { icon: '🐠', name: 'Cá Ali', price: 20 },
+            { icon: '🐡', name: 'Cá Nóc', price: 30 },
+            { icon: '🦈', name: 'Cá Mập', price: 500 },
+            { icon: '👟', name: 'Giày rách', price: 0 }
+        ];
+
+        const random = Math.random();
+        let monDo;
+        if (random < 0.05) monDo = listCa[3];      // Cá mập
+        else if (random < 0.3) monDo = listCa[2]; // Cá nóc
+        else if (random < 0.6) monDo = listCa[0]; // Cá rô
+        else monDo = listCa[4];                   // Giày rách
+
+        const msg = await message.reply("🎣 Sếp đang thả cần...");
+
+        setTimeout(() => {
+            if (monDo.price > 0) {
+                // CỘNG BIẾN: Lưu vào túi đồ và cộng tiền
+                tuiDo[userId].tien += monDo.price;
+                tuiDo[userId].ca += 1;
+                tuiDo[userId].tui.push(monDo.name);
+
+                msg.edit(`🎣 Chúc mừng sếp câu được **${monDo.name}** ${monDo.icon}!\n💰 Sếp nhận được **${monDo.price}$**. Tổng tiền hiện có: **${tuiDo[userId].tien}$**`);
+            } else {
+                msg.edit(`👞 Đen! Câu dính **${monDo.name}**. Không có tiền!`);
+            }
+        }, 2000);
+    }
+    if (command === 'vi' || command === 'tui') {
+        const userId = message.author.id;
+        const data = tuiDo[userId];
+
+        if (!data || data.ca === 0) return message.reply("🎫 Ví trống rỗng! Sếp đi câu cá kiếm tiền đi.");
+
+        const embed = new EmbedBuilder()
+            .setTitle(`💰 VÍ TIỀN CỦA ${message.author.username}`)
+            .setColor(0xFFFF00)
+            .addFields(
+                { name: "💵 Tiền mặt", value: `${data.tien}$`, inline: true },
+                { name: "🐟 Tổng số cá đã câu", value: `${data.ca} con`, inline: true }
+            )
+            .setFooter({ text: "Gõ !fish để kiếm thêm tiền sếp nhé!" });
+
+        message.reply({ embeds: [embed] });
+    }
     // --- LỆNH !rbgroup: SOI HỘI NHÓM CHI TIẾT ---
     if (command === 'rbgroup') {
         const username = args[0];
