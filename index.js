@@ -184,7 +184,7 @@ client.on('messageCreate', async (message) => {
             });
         });
     }
-   if (command === 'say') {
+  if (command === 'say') {
         const noiDung = args.join(" ");
         if (!noiDung) return message.reply("❓ Sếp muốn em nói gì thì phải gõ chữ ra chứ!");
 
@@ -192,31 +192,46 @@ client.on('messageCreate', async (message) => {
         if (!voiceChannel) return message.reply("❌ Sếp vào Voice trước đi em mới vào nói theo được.");
 
         try {
-            // 1. Kết nối voice
-            const connection = joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: message.guild.id,
-                adapterCreator: message.guild.voiceAdapterCreator,
-            });
+            // 1. Khởi tạo hoặc lấy kết nối hiện tại
+            let connection = getVoiceConnection(message.guild.id);
+            
+            if (!connection) {
+                connection = joinVoiceChannel({
+                    channelId: voiceChannel.id,
+                    guildId: message.guild.id,
+                    adapterCreator: message.guild.voiceAdapterCreator,
+                    selfDeaf: false, // Để bot không bị điếc (tăng độ ổn định)
+                });
+            }
 
             // 2. Lấy stream từ Google TTS
             const stream = discordTTS.getVoiceStream(noiDung, { lang: 'vi' });
 
-            // 3. QUAN TRỌNG: Tạo Audio Resource với kiểu dữ liệu Arbitrary
-            // Điều này giúp ffmpeg tự động hiểu và convert stream từ gTTS
+            // 3. Tạo Audio Resource (Bản chuẩn cho Railway)
             const resource = createAudioResource(stream, { 
-                inputType: require('@discordjs/voice').StreamType.Arbitrary 
+                inputType: require('@discordjs/voice').StreamType.Arbitrary,
+                inlineVolume: true 
             });
 
+            // Chỉnh âm lượng (tùy chọn)
+            if (resource.volume) resource.volume.setVolume(1.0);
+
+            // 4. Tạo Player và phát
             const player = createAudioPlayer();
             player.play(resource);
             connection.subscribe(player);
 
             message.react('✅');
 
-            // 4. Xử lý lỗi Player để xem Railway báo gì nếu hỏng
+            // Xử lý khi nói xong hoặc gặp lỗi
+            player.on(AudioPlayerStatus.Idle, () => {
+                // Giữ kết nối nhưng dừng player để tiết kiệm RAM
+                player.stop();
+            });
+
             player.on('error', error => {
                 console.error(`[Lỗi Audio]: ${error.message}`);
+                message.reply("⚠️ Có lỗi khi xử lý giọng nói!");
             });
 
         } catch (error) {
