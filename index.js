@@ -399,58 +399,48 @@ client.on('messageCreate', async (message) => {
                 }
 if (command === 'fish') {
         const userId = message.author.id;
+        if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, ca: 0, kho: [] };
 
-        // Nếu sếp mới câu lần đầu, tạo "biến" hồ sơ cho sếp
-        if (!tuiDo[userId]) {
-            tuiDo[userId] = { tien: 0, ca: 0, tui: [] };
-        }
+        const tiLe = Math.random();
+        let ca;
+        if (tiLe < 0.1) ca = { name: "Cá Mập 🦈", price: 1000 };
+        else if (tiLe < 0.4) ca = { name: "Cá Ngừ 🐟", price: 200 };
+        else ca = { name: "Cá Rô 🐠", price: 50 };
 
-        const listCa = [
-            { icon: '🐟', name: 'Cá Rô', price: 10 },
-            { icon: '🐠', name: 'Cá Ali', price: 20 },
-            { icon: '🐡', name: 'Cá Nóc', price: 30 },
-            { icon: '🦈', name: 'Cá Mập', price: 500 },
-            { icon: '👟', name: 'Giày rách', price: 0 }
-        ];
-
-        const random = Math.random();
-        let monDo;
-        if (random < 0.05) monDo = listCa[3];      // Cá mập
-        else if (random < 0.3) monDo = listCa[2]; // Cá nóc
-        else if (random < 0.6) monDo = listCa[0]; // Cá rô
-        else monDo = listCa[4];                   // Giày rách
-
-        const msg = await message.reply("🎣 Sếp đang thả cần...");
-
-        setTimeout(() => {
-            if (monDo.price > 0) {
-                // CỘNG BIẾN: Lưu vào túi đồ và cộng tiền
-                tuiDo[userId].tien += monDo.price;
-                tuiDo[userId].ca += 1;
-                tuiDo[userId].tui.push(monDo.name);
-
-                msg.edit(`🎣 Chúc mừng sếp câu được **${monDo.name}** ${monDo.icon}!\n💰 Sếp nhận được **${monDo.price}$**. Tổng tiền hiện có: **${tuiDo[userId].tien}$**`);
-            } else {
-                msg.edit(`👞 Đen! Câu dính **${monDo.name}**. Không có tiền!`);
-            }
-        }, 2000);
+        message.reply("🎣 Sếp đang thả cần...").then(msg => {
+            setTimeout(() => {
+                tuiDo[userId].kho.push(ca); // Cất cá vào kho
+                msg.edit(`✨ Sếp câu được một con **${ca.name}**! Gõ \`!sell\` để bán lấy tiền.`);
+            }, 2000);
+        });
     }
-    if (command === 'vi' || command === 'tui') {
+    if (command === 'sell') {
         const userId = message.author.id;
         const data = tuiDo[userId];
 
-        if (!data || data.ca === 0) return message.reply("🎫 Ví trống rỗng! Sếp đi câu cá kiếm tiền đi.");
+        if (!data || data.kho.length === 0) return message.reply("❌ Kho cá của sếp trống rỗng!");
 
-        const embed = new EmbedBuilder()
-            .setTitle(`💰 VÍ TIỀN CỦA ${message.author.username}`)
-            .setColor(0xFFFF00)
-            .addFields(
-                { name: "💵 Tiền mặt", value: `${data.tien}$`, inline: true },
-                { name: "🐟 Tổng số cá đã câu", value: `${data.ca} con`, inline: true }
-            )
-            .setFooter({ text: "Gõ !fish để kiếm thêm tiền sếp nhé!" });
+        let tongTien = 0;
+        data.kho.forEach(ca => tongTien += ca.price); // Tính tổng giá trị cá
+        
+        data.tien += tongTien; // Cộng tiền vào ví
+        data.kho = []; // Xóa sạch kho cá sau khi bán
 
-        message.reply({ embeds: [embed] });
+        message.reply(`💰 Sếp đã bán sạch kho cá và nhận được **${tongTien}$**! Tổng tiền hiện có: **${data.tien}$**`);
+    }
+    if (command === 'doixu') {
+        const userId = message.author.id;
+        const data = tuiDo[userId];
+        const soLuongXuMuonDoi = parseInt(args[0]) || 1;
+        const giaXu = 1000; // 1000$ = 10 Xu
+
+        if (!data || data.tien < (giaXu * soLuongXuMuonDoi)) {
+            return message.reply(`❌ Không đủ tiền! Sếp cần **${giaXu * soLuongXuMuonDoi}$** để đổi **${soLuongXuMuonDoi} Xu**.`);
+        }
+
+        data.tien -= (giaXu * soLuongXuMuonDoi); // Trừ tiền
+        // Ở đây sếp có thể cộng vào một biến 'xu' khác hoặc ghi log ra
+        message.reply(`✅ Thành công! Sếp đã đổi **${giaXu * soLuongXuMuonDoi}$** lấy **${soLuongXuMuonDoi} Xu**. Chúc mừng sếp đã thăng hạng đại gia!`);
     }
     // --- LỆNH !rbgroup: SOI HỘI NHÓM CHI TIẾT ---
     if (command === 'rbgroup') {
