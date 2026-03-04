@@ -173,7 +173,7 @@ client.on('messageCreate', async (message) => {
             });
         });
     }
-  const gTTS = require('gtts'); // Nhớ khai báo ở đầu file
+  
 
 // ... (trong phần client.on messageCreate)
 
@@ -204,11 +204,15 @@ client.on('messageCreate', async (message) => {
     } 
     if (command === 'doixu') {
         const userId = message.author.id;
-        const data = tuiDo[userId];
-        const soLuongXu = parseInt(args[0]) || 1; // Mặc định đổi 1 xu nếu không nhập số
-        const giaXu = 1000; // Quy định: 1000$ = 1 Xu
+        
+        // Thêm dòng này: Nếu chưa có dữ liệu thì tạo mới để tránh lỗi
+        if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, xu: 0, tongCa: 0 };
 
-        if (!data || data.tien < (giaXu * soLuongXu)) {
+        const data = tuiDo[userId];
+        const soLuongXu = parseInt(args[0]) || 1; 
+        const giaXu = 1000; 
+
+        if (data.tien < (giaXu * soLuongXu)) {
             return message.reply(`❌ Sếp không đủ tiền! Cần **${giaXu * soLuongXu}$** để đổi **${soLuongXu} Xu**.`);
         }
 
