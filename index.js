@@ -9,34 +9,22 @@ const {
 } = require('discord.js');
 require('dotenv').config();
 const axios = require('axios');
-// Biến này dùng để lưu tiền và túi đồ của anh em
+
+// Biến lưu trữ tiền và túi đồ (Lưu trong RAM, sẽ reset khi bot restart)
 const tuiDo = {};
-// THÊM DÒNG NÀY ĐỂ FIX LỖI KHÔNG NÓI TRÊN RAILWAY
-const ffmpeg = require('ffmpeg-static');
 
-const { 
-    joinVoiceChannel, 
-    createAudioPlayer, 
-    createAudioResource, 
-    AudioPlayerStatus, 
-    getVoiceConnection 
-} = require('@discordjs/voice');
-const discordTTS = require('discord-tts');
-
-// KHỞI TẠO CLIENT VỚI ĐỦ QUYỀN (INTENTS)
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildVoiceStates // Bắt buộc để dùng lệnh Say/Join
+        GatewayIntentBits.GuildMembers
     ]
 });
 
 client.once('ready', () => {
-    console.log(`[LEVIATHAN BOT] Đã sẵn sàng hoạt động!`);
-    client.user.setActivity('!help | Roblox & Voice', { type: ActivityType.Watching });
+    console.log(`[LEVIATHAN BOT] Đã sẵn sàng hoạt động! (Đã xóa Voice để fix lỗi Railway)`);
+    client.user.setActivity('!help | Roblox & Fishing', { type: ActivityType.Watching });
 });
 
 client.on('messageCreate', async (message) => {
@@ -45,7 +33,6 @@ client.on('messageCreate', async (message) => {
 
     const args = message.content.slice(1).trim().split(/ +/);
     const command = args.shift().toLowerCase();
-
     // --- LỆNH HELP TỔNG HỢP (CHỨA TẤT CẢ LỆNH CŨ & MỚI) ---
     if (command === 'help') {
         const embed = new EmbedBuilder()
@@ -80,7 +67,8 @@ client.on('messageCreate', async (message) => {
         return message.reply({ embeds: [embed] });
     }
 
-    // --- SAU DÒNG NÀY SẾP DÁN CÁC LỆNH IF (SAY, JOIN, LEAVE, RBCHECK...) ---
+
+    
     
 // --- LỆNH !rbcheck: PHIÊN BẢN VIP ---
     if (command === 'rbcheck') {
@@ -189,67 +177,63 @@ client.on('messageCreate', async (message) => {
 
 // ... (trong phần client.on messageCreate)
 
-    if (command === 'say') {
-        const noiDung = args.join(" ");
-        if (!noiDung) return message.reply("❓ Sếp muốn em nói gì?");
+  if (command === 'fish') {
+        const userId = message.author.id;
+        if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, xu: 0, tongCa: 0 };
 
-        const voiceChannel = message.member.voice.channel;
-        if (!voiceChannel) return message.reply("❌ Sếp vào Voice trước đi em mới nói được.");
-
-        try {
-            const connection = joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: message.guild.id,
-                adapterCreator: message.guild.voiceAdapterCreator,
-            });
-
-            // Tạo luồng âm thanh bằng gTTS (Rất ổn định trên Railway)
-            const gtts = new gTTS(noiDung, 'vi');
-            const resource = createAudioResource(gtts.stream(), {
-                inputType: require('@discordjs/voice').StreamType.Arbitrary,
-                inlineVolume: true
-            });
-
-            const player = createAudioPlayer();
-            player.play(resource);
-            connection.subscribe(player);
-
-            message.react('✅');
-
-            player.on('error', error => {
-                console.error(`[Lỗi Audio Railway]: ${error.message}`);
-            });
-
-        } catch (error) {
-            console.error(error);
-            message.reply("⚠️ Bot bị nghẹn rồi sếp ơi!");
-        }
-    }
-    // --- LỆNH !join: MỜI BOT VÀO VOICE ---
-    if (command === 'join') {
-        const voiceChannel = message.member.voice.channel;
-        if (!voiceChannel) return message.reply("❌ Sếp phải vào một kênh voice trước thì em mới vào theo được!");
-
-        joinVoiceChannel({
-            channelId: voiceChannel.id,
-            guildId: message.guild.id,
-            adapterCreator: message.guild.voiceAdapterCreator,
-        });
-
-        message.reply("✅ Đã có mặt tại kênh voice của sếp!");
-    }
-
-    // --- LỆNH !leave: ĐUỔI BOT KHỎI VOICE ---
-    if (command === 'leave' || command === 'out') {
-        const connection = require('@discordjs/voice').getVoiceConnection(message.guild.id);
+        const tiLe = Math.random();
+        let vatPham;
         
-        if (connection) {
-            connection.destroy();
-            message.reply("👋 Tạm biệt sếp, em đi đây!");
-        } else {
-            message.reply("❌ Em có ở trong kênh voice nào đâu mà đuổi!");
-        }
+        if (tiLe < 0.05) vatPham = { name: "Cá Mập Siêu Cấp 🦈", price: 1500 };
+        else if (tiLe < 0.2) vatPham = { name: "Cá Ngừ Đại Dương 🐟", price: 400 };
+        else if (tiLe < 0.5) vatPham = { name: "Cá Rô Phi 🐠", price: 150 };
+        else if (tiLe < 0.8) vatPham = { name: "Cá Lòng Tong 🐟", price: 30 };
+        else vatPham = { name: "Chiếc Giày Rách 👞", price: 0 };
+
+        const msg = await message.reply("🎣 Sếp đang quăng cần... chờ chút nha...");
+
+        setTimeout(() => {
+            if (vatPham.price > 0) {
+                tuiDo[userId].tien += vatPham.price;
+                tuiDo[userId].tongCa += 1;
+                msg.edit(`✨ **Dính cá!** Sếp câu được **${vatPham.name}**.\n💰 Bán được: **${vatPham.price}$**. Gõ \`!vi\` để xem túi tiền!`);
+            } else {
+                msg.edit(`👞 **Hẻo!** Câu trúng cái **${vatPham.name}**. Không bán được đồng nào!`);
+            }
+        }, 2000);
     } 
+    if (command === 'doixu') {
+        const userId = message.author.id;
+        const data = tuiDo[userId];
+        const soLuongXu = parseInt(args[0]) || 1; // Mặc định đổi 1 xu nếu không nhập số
+        const giaXu = 1000; // Quy định: 1000$ = 1 Xu
+
+        if (!data || data.tien < (giaXu * soLuongXu)) {
+            return message.reply(`❌ Sếp không đủ tiền! Cần **${giaXu * soLuongXu}$** để đổi **${soLuongXu} Xu**.`);
+        }
+
+        data.tien -= (giaXu * soLuongXu);
+        data.xu += soLuongXu;
+        message.reply(`✅ Thành công! Sếp đã đổi **${giaXu * soLuongXu}$** lấy **${soLuongXu} Xu Vàng**. Hiện có: **${data.xu} Xu**.`);
+    }
+    if (command === 'vi') {
+        const userId = message.author.id;
+        const data = tuiDo[userId] || { tien: 0, xu: 0, tongCa: 0 };
+
+        const embed = new EmbedBuilder()
+            .setTitle(`🏦 TÀI KHOẢN CỦA ${message.author.username.toUpperCase()}`)
+            .setColor(0x00FF00)
+            .setThumbnail(message.author.displayAvatarURL())
+            .addFields(
+                { name: "💵 Tiền mặt ($)", value: `\`${data.tien}$\``, inline: true },
+                { name: "🪙 Xu Vàng", value: `\`${data.xu} Xu\``, inline: true },
+                { name: "📊 Tổng số cá", value: `\`${data.tongCa} con\``, inline: true }
+            )
+            .setFooter({ text: "Sếp chăm đi câu cá để đổi thêm Xu nhé!" })
+            .setTimestamp();
+
+        message.reply({ embeds: [embed] });
+    }
 // --- LỆNH !rbjoin: PHIÊN BẢN ÉP JOIN SIÊU CẤP ---
     if (command === 'rbjoin') {
         const username = args[0];
@@ -397,51 +381,7 @@ client.on('messageCreate', async (message) => {
             message.reply("❌ Lỗi: Không thể lấy dữ liệu từ Roblox. Tài khoản có thể đã bị xóa hoặc API lag.");
         }
                 }
-if (command === 'fish') {
-        const userId = message.author.id;
-        if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, ca: 0, kho: [] };
 
-        const tiLe = Math.random();
-        let ca;
-        if (tiLe < 0.1) ca = { name: "Cá Mập 🦈", price: 1000 };
-        else if (tiLe < 0.4) ca = { name: "Cá Ngừ 🐟", price: 200 };
-        else ca = { name: "Cá Rô 🐠", price: 50 };
-
-        message.reply("🎣 Sếp đang thả cần...").then(msg => {
-            setTimeout(() => {
-                tuiDo[userId].kho.push(ca); // Cất cá vào kho
-                msg.edit(`✨ Sếp câu được một con **${ca.name}**! Gõ \`!sell\` để bán lấy tiền.`);
-            }, 2000);
-        });
-    }
-    if (command === 'sell') {
-        const userId = message.author.id;
-        const data = tuiDo[userId];
-
-        if (!data || data.kho.length === 0) return message.reply("❌ Kho cá của sếp trống rỗng!");
-
-        let tongTien = 0;
-        data.kho.forEach(ca => tongTien += ca.price); // Tính tổng giá trị cá
-        
-        data.tien += tongTien; // Cộng tiền vào ví
-        data.kho = []; // Xóa sạch kho cá sau khi bán
-
-        message.reply(`💰 Sếp đã bán sạch kho cá và nhận được **${tongTien}$**! Tổng tiền hiện có: **${data.tien}$**`);
-    }
-    if (command === 'doixu') {
-        const userId = message.author.id;
-        const data = tuiDo[userId];
-        const soLuongXuMuonDoi = parseInt(args[0]) || 1;
-        const giaXu = 1000; // 1000$ = 10 Xu
-
-        if (!data || data.tien < (giaXu * soLuongXuMuonDoi)) {
-            return message.reply(`❌ Không đủ tiền! Sếp cần **${giaXu * soLuongXuMuonDoi}$** để đổi **${soLuongXuMuonDoi} Xu**.`);
-        }
-
-        data.tien -= (giaXu * soLuongXuMuonDoi); // Trừ tiền
-        // Ở đây sếp có thể cộng vào một biến 'xu' khác hoặc ghi log ra
-        message.reply(`✅ Thành công! Sếp đã đổi **${giaXu * soLuongXuMuonDoi}$** lấy **${soLuongXuMuonDoi} Xu**. Chúc mừng sếp đã thăng hạng đại gia!`);
-    }
     // --- LỆNH !rbgroup: SOI HỘI NHÓM CHI TIẾT ---
     if (command === 'rbgroup') {
         const username = args[0];
