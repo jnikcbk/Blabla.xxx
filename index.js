@@ -184,8 +184,7 @@ client.on('messageCreate', async (message) => {
             });
         });
     }
-   // --- LỆNH !say: BOT VÀO VOICE VÀ NÓI THEO Ý MUỐN ---
-    if (command === 'say') {
+   if (command === 'say') {
         const noiDung = args.join(" ");
         if (!noiDung) return message.reply("❓ Sếp muốn em nói gì thì phải gõ chữ ra chứ!");
 
@@ -193,32 +192,36 @@ client.on('messageCreate', async (message) => {
         if (!voiceChannel) return message.reply("❌ Sếp vào Voice trước đi em mới vào nói theo được.");
 
         try {
-            // Kết nối vào Voice
+            // 1. Kết nối voice
             const connection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: message.guild.id,
                 adapterCreator: message.guild.voiceAdapterCreator,
             });
 
-            // Chuyển văn bản thành giọng nói (Tiếng Việt)
+            // 2. Lấy stream từ Google TTS
             const stream = discordTTS.getVoiceStream(noiDung, { lang: 'vi' });
-            const resource = createAudioResource(stream);
-            const player = createAudioPlayer();
 
+            // 3. QUAN TRỌNG: Tạo Audio Resource với kiểu dữ liệu Arbitrary
+            // Điều này giúp ffmpeg tự động hiểu và convert stream từ gTTS
+            const resource = createAudioResource(stream, { 
+                inputType: require('@discordjs/voice').StreamType.Arbitrary 
+            });
+
+            const player = createAudioPlayer();
             player.play(resource);
             connection.subscribe(player);
 
             message.react('✅');
 
-            // Khi nói xong thì tự động nghỉ (Idle) nhưng không thoát 
-            // để sếp có thể dùng lệnh !leave chủ động
-            player.on(AudioPlayerStatus.Idle, () => {
-                player.stop();
+            // 4. Xử lý lỗi Player để xem Railway báo gì nếu hỏng
+            player.on('error', error => {
+                console.error(`[Lỗi Audio]: ${error.message}`);
             });
 
         } catch (error) {
             console.error(error);
-            message.reply("⚠️ Nghẹn họng rồi sếp ơi, không nói được!");
+            message.reply("⚠️ Bot bị nghẹn rồi sếp ơi!");
         }
     }
     // --- LỆNH !join: MỜI BOT VÀO VOICE ---
