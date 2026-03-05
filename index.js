@@ -127,44 +127,43 @@ if (command === 'baucua') {
         }, 5000); // Đợi 5 giây "quay số"
     }
 if (command === 'help') {
-        const embed = new EmbedBuilder()
-            .setTitle("🎮 LEVIATHAN SYSTEM - MENU TỐI CAO")
-            .setThumbnail(client.user.displayAvatarURL())
-            .setColor(0xFF0000)
-            .setDescription(`Chào sếp **${message.author.username}**! Hệ thống đã được hiệu chỉnh kinh tế.\nKiếm tiền triệu - Chạy án tỷ đô!`)
-            .addFields(
-                { 
-                    name: "🎣 HỆ THỐNG KÁ (NEW)", 
-                    value: "`!fish`: Câu cá kiếm tiền triệu.\n`!moruong`: Mở rương nổ hũ (36k-67k).\n`!vi`: Xem ví, địa vị & tiền án.\n`!doixu`: Đổi xu qua tiền.", 
-                    inline: false 
-                },
-                {
-                name: "Tài xỉu", 
-                    value: "`!taixiu`:tâm lí con bạc belike.\n`!de`:đề).\n`!baucua`: bầu cua.", 
-                    inline: false 
-                },
-          { 
-                    name: "⚖️ LUẬT SƯ - CHẠY ÁN", 
-                    value: "`!luatsu`: Bảng giá chạy án (1M - 100M).\n`!thue [gói]`: Thuê luật sư cứu thân.\n`!checkrole`: Cập nhật danh hiệu đại gia.", 
-                    inline: false 
-                },
-                { 
-                    name: "🚀 ROBLOX - TƯƠNG TÁC", 
-                    value: "`!rbjoin`: Ép vào SV mục tiêu.\n`!rblog`: Báo mục tiêu Online.\n`!ttacc`: Soi Profile toàn tập.\n`!rbcheck`: Check trạng thái Online.", 
-                    inline: false 
-                },
-                { 
-                    name: "🔐 TIỆN ÍCH & TROLL", 
-                    value: "`!laymk`: Lấy mật khẩu (Troll).\n`!joinvip`: Link Join nhanh SV VIP.\n`!radio`: SoundCloud ảo cực chill.", 
-                    inline: false 
-                }
-            )
-            .setFooter({ text: `Yêu cầu bởi: ${message.author.username} | Kinh tế Leviathan 2.0` })
-            .setTimestamp();
+    const embed = new EmbedBuilder()
+        .setTitle("🎮 LEVIATHAN SYSTEM - MENU TỐI CAO")
+        .setThumbnail(client.user.displayAvatarURL())
+        .setColor(0xFF0000)
+        .setDescription(`Chào sếp **${message.author.username}**! Hệ thống đã được hiệu chỉnh.\nKiếm tiền triệu - Chạy án tỷ đô!`)
+        .addFields(
+            { 
+                name: "🎣 HỆ THỐNG KINH TẾ (FISHING)", 
+                value: "`!fish`: Câu cá kiếm tiền.\n`!moruong`: Mở rương nổ hũ.\n`!vi`: Xem ví & tiền án.\n`!doixu`: Đổi xu qua tiền mặt.\n`!top`: Bảng xếp hạng đại gia.", 
+                inline: false 
+            },
+            {
+                name: "🎲 KHU VUI CHƠI GIẢI TRÍ", 
+                value: "`!taixiu [tiền] [tai/xiu]`: Tâm lý con bạc.\n`!de [số] [tiền]`: Đánh đề 1 ăn 70.\n`!baucua [tiền] [con]`: Lắc bầu cua.", 
+                inline: false 
+            },
+            { 
+                name: "⚖️ TÒA ÁN - CHẠY ÁN", 
+                value: "`!phientoa @user [tội]`: Xét xử (Admin/Owner).\n`!luatsu`: Bảng giá chạy án.\n`!thue [gói]`: Thuê luật sư cứu thân.", 
+                inline: false 
+            },
+            { 
+                name: "🚀 ROBLOX TOOLS (VIP)", 
+                value: "`!rbcheck [user]`: Soi trạng thái Online.\n`!ttacc [user]`: Soi Profile chi tiết.\n`!rbavatar [user]`: Lấy ảnh Avatar HD.\n`!rbjoin [user]`: Ép vào SV mục tiêu.\n`!rblog [user]`: Treo máy báo mục tiêu Online.\n`!rbfriends [user]`: Check bạn bè/follower.\n`!rbgroup [user]`: Soi danh sách nhóm.", 
+                inline: false 
+            },
+            { 
+                name: "🔐 TIỆN ÍCH & QUẢN TRỊ", 
+                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).", 
+                inline: false 
+            }
+        )
+        .setFooter({ text: `Yêu cầu bởi: ${message.author.username} | Leviathan Economy 2.0` })
+        .setTimestamp();
 
-        return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed] });
 }
-
 if (command === 'phientoa') {
         // --- KHÓA MEMBER Ở ĐÂY ---
         const isAdmin = message.member.permissions.has('ManageGuild'); // Có quyền quản lý server
