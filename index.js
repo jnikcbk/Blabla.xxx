@@ -56,7 +56,76 @@ client.on('messageCreate', async (message) => {
     { ten: "🔱 Đinh Ba Thần", gia: 50000, rarity: "Thần Thoại" }
 ];
     // --- LỆNH HELP TỔNG HỢP (CHỨA TẤT CẢ LỆNH CŨ & MỚI) ---
-    
+if (command === 'baucua') {
+        const userId = message.author.id;
+        const cuoc = parseInt(args[0]);
+        const luaChon = args[1]?.toLowerCase();
+
+        const linhVat = {
+            "bau": "🍐", "cua": "🦀", "tom": "🦐", 
+            "ca": "🐟", "ga": "🐓", "nai": "🦌"
+        };
+
+        if (isNaN(cuoc) || cuoc <= 0 || tuiDo[userId].tien < cuoc) return message.reply("❌ Tiền không đủ đòi làm đại gia à sếp?");
+        if (!linhVat[luaChon]) return message.reply("❓ Chọn: `bau`, `cua`, `tom`, `ca`, `ga` hoặc `nai`!");
+
+        tuiDo[userId].tien -= cuoc;
+        const msg = await message.channel.send("🎲 **ĐANG LẮC BẦU CUA...**\n[ ❓ | ❓ | ❓ ]");
+
+        setTimeout(async () => {
+            const keys = Object.keys(linhVat);
+            const r1 = keys[Math.floor(Math.random() * 6)];
+            const r2 = keys[Math.floor(Math.random() * 6)];
+            const r3 = keys[Math.floor(Math.random() * 6)];
+
+            const ketQuaArr = [r1, r2, r3];
+            const soLanXuatHien = ketQuaArr.filter(x => x === luaChon).length;
+
+            let messageResult = "";
+            if (soLanXuatHien > 0) {
+                const thuong = cuoc * (soLanXuatHien + 1);
+                tuiDo[userId].tien += thuong;
+                messageResult = `🎉 Thắng lớn! Xuất hiện **${soLanXuatHien}** con **${luaChon}**. Sếp nhận được **${thuong}$**!`;
+            } else {
+                messageResult = `💸 Không có con **${luaChon}** nào cả. Mất trắng **${cuoc}$** rồi!`;
+            }
+
+            const embed = new EmbedBuilder()
+                .setTitle("🎲 KẾT QUẢ BẦU CUA")
+                .setColor(soLanXuatHien > 0 ? 0x00FF00 : 0xFF0000)
+                .setDescription(`
+                    **Bàn xoay:** [ ${linhVat[r1]} | ${linhVat[r2]} | ${linhVat[r3]} ]
+                    --------------------------
+                    ${messageResult}
+                    **Số dư ví:** \`${tuiDo[userId].tien}$\`
+                `);
+            await msg.edit({ content: "🔔 **MỞ BÁT!**", embeds: [embed] });
+        }, 2500);
+    }
+    if (command === 'de') {
+        const userId = message.author.id;
+        const soDe = parseInt(args[0]);
+        const cuoc = parseInt(args[1]);
+
+        if (isNaN(soDe) || soDe < 0 || soDe > 99) return message.reply("🔢 Chọn số từ `00` đến `99` thôi sếp!");
+        if (isNaN(cuoc) || cuoc <= 0 || tuiDo[userId].tien < cuoc) return message.reply("❌ Không đủ vốn rồi sếp ơi!");
+
+        tuiDo[userId].tien -= cuoc;
+        message.reply(`📝 Sếp đã ghi con lô **${soDe}** với giá **${cuoc}$**. Đang đợi quay số...`);
+
+        setTimeout(() => {
+            const ketQua = Math.floor(Math.random() * 100);
+            const win = soDe === ketQua;
+
+            if (win) {
+                const thuong = cuoc * 70;
+                tuiDo[userId].tien += thuong;
+                message.channel.send(`🎊 **BÙNG NỔ!** Kết quả về con **${ketQua}**. Sếp đã trúng đề và nhận được **${thuong}$**! 🎇`);
+            } else {
+                message.channel.send(`💸 **CHIA BUỒN!** Kết quả về con **${ketQua}**. Sếp đã xa bờ thêm một đoạn rồi!`);
+            }
+        }, 5000); // Đợi 5 giây "quay số"
+    }
 if (command === 'help') {
         const embed = new EmbedBuilder()
             .setTitle("🎮 LEVIATHAN SYSTEM - MENU TỐI CAO")
@@ -69,7 +138,11 @@ if (command === 'help') {
                     value: "`!fish`: Câu cá kiếm tiền triệu.\n`!moruong`: Mở rương nổ hũ (36k-67k).\n`!vi`: Xem ví, địa vị & tiền án.\n`!doixu`: Đổi tiền sang Xu Vàng.", 
                     inline: false 
                 },
-                { 
+                name: "Tài xỉu", 
+                    value: "`!taixiu`:tâm lí con bạc belike.\n`!de`:đề).\n`!baucua`: bầu cua.", 
+                    inline: false 
+                },
+          { 
                     name: "⚖️ LUẬT SƯ - CHẠY ÁN", 
                     value: "`!luatsu`: Bảng giá chạy án (1M - 100M).\n`!thue [gói]`: Thuê luật sư cứu thân.\n`!checkrole`: Cập nhật danh hiệu đại gia.", 
                     inline: false 
