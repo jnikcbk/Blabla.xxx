@@ -135,7 +135,7 @@ if (command === 'help') {
             .addFields(
                 { 
                     name: "🎣 HỆ THỐNG KÁ (NEW)", 
-                    value: "`!fish`: Câu cá kiếm tiền triệu.\n`!moruong`: Mở rương nổ hũ (36k-67k).\n`!vi`: Xem ví, địa vị & tiền án.\n`!doixu`: Đổi tiền sang Xu Vàng.", 
+                    value: "`!fish`: Câu cá kiếm tiền triệu.\n`!moruong`: Mở rương nổ hũ (36k-67k).\n`!vi`: Xem ví, địa vị & tiền án.\n`!doixu`: Đổi xu qua tiền.", 
                     inline: false 
                 },
                 {
@@ -466,20 +466,52 @@ if (command === 'phientoa') {
     if (command === 'doixu') {
         const userId = message.author.id;
         
-        // Thêm dòng này: Nếu chưa có dữ liệu thì tạo mới để tránh lỗi
         if (!tuiDo[userId]) tuiDo[userId] = { tien: 0, xu: 0, tongCa: 0 };
 
         const data = tuiDo[userId];
-        const soLuongXu = parseInt(args[0]) || 10; 
-        const giaXu = 1000; 
+        const soLuongXu = parseInt(args[0]) || 1; // Mặc định bán 1 xu
+        const giaGoc = 5000; // 5k 1 xu
 
-        if (data.tien < (giaXu * soLuongXu)) {
-            return message.reply(`❌ Sếp không đủ tiền! Cần **${giaXu * soLuongXu}$** để đổi **${soLuongXu} Xu**.`);
+        // 1. Kiểm tra túi đồ xem có đủ xu không
+        if (data.xu < soLuongXu || soLuongXu <= 0) {
+            return message.reply(`❌ Sếp không đủ **${soLuongXu} Xu**! Hiện chỉ có **${data.xu} Xu**.`);
         }
 
-        data.tien -= (giaXu * soLuongXu);
-        data.xu += soLuongXu;
-        message.reply(`✅ Thành công! Sếp đã đổi **${giaXu * soLuongXu}$** lấy **${soLuongXu} Xu Vàng**. Hiện có: **${data.xu} Xu**.`);
+        // 2. Tính toán tiền nhận được
+        let thanhTien = soLuongXu * giaGoc;
+        let bonus = 0;
+        let thongBaoBonus = "";
+
+        // Nếu đổi từ 10 xu trở lên thì cộng thêm 20%
+        if (soLuongXu >= 10) {
+            bonus = Math.floor(thanhTien * 0.2); // Tính 20% bonus
+            thanhTien += bonus;
+            thongBaoBonus = `\n🎁 **Khuyến mãi đại gia:** +${bonus}$ (20% bonus)`;
+        }
+
+        // 3. Thực hiện trừ Xu và cộng Tiền
+        data.xu -= soLuongXu;
+        data.tien += thanhTien;
+
+        // 4. Gửi Embed hóa đơn cho sang
+        const doiEmbed = new EmbedBuilder()
+            .setTitle("🏦 GIAO DỊCH TIỆM KIM HOÀN")
+            .setColor(0x00FF00)
+            .setThumbnail("https://cdn.discordapp.com/emojis/764391515234238494.png") // Icon cup vàng
+            .setDescription(`
+                Sếp đã bán: **${soLuongXu} Xu Vàng**
+                Giá gốc: \`${giaGoc}$ / 1 Xu\`
+                ${thongBaoBonus}
+                --------------------------
+                💰 **Tổng tiền nhận được:** **+${thanhTien}$**
+                
+                💵 **Ví tiền:** \`${data.tien}$\`
+                ✨ **Xu còn lại:** \`${data.xu} Xu\`
+            `)
+            .setFooter({ text: "Giao dịch thành công • Leviathan Bank" })
+            .setTimestamp();
+
+        message.reply({ embeds: [doiEmbed] });
     }
     if (command === 'vi') {
         const userId = message.author.id;
@@ -788,7 +820,49 @@ if (command === 'taixiu') {
             message.reply("❌ Lỗi khi trích xuất dữ liệu nhóm từ Roblox.");
         }
     }
+if (command === 'addmoney') {
+        // Chỉ cho phép người có quyền Administrator dùng lệnh này
+        if (!message.member.permissions.has('Administrator')) return message.reply("👑 Chỉ Sếp Tổng mới có quyền cấp ngân sách!");
 
+        const target = message.mentions.members.first();
+        const soLuong = parseInt(args[1]);
+        const loai = args[2]?.toLowerCase(); // 'tien' hoặc 'xu'
+
+        if (!target || isNaN(soLuong) || !['tien', 'xu'].includes(loai)) {
+            return message.reply("❓ Cách dùng: `!addmoney @user [số lượng] [tien/xu]`");
+        }
+
+        if (!tuiDo[target.id]) tuiDo[target.id] = { tien: 0, xu: 0 };
+
+        if (loai === 'tien') {
+            tuiDo[target.id].tien += soLuong;
+            message.reply(`✅ Đã cấp **${soLuong}$** vào ví của ${target}.`);
+        } else {
+            tuiDo[target.id].xu += soLuong;
+            message.reply(`✅ Đã cấp **${soLuong} Xu Vàng** vào ví của ${target}.`);
+        }
+    }
+    if (command === 'top') {
+        if (!tuiDo || Object.keys(tuiDo).length === 0) return message.reply("Chưa có ai trên bảng xếp hạng sếp ơi!");
+
+        const topList = Object.entries(tuiDo)
+            .sort(([, a], [, b]) => b.tien - a.tien)
+            .slice(0, 5);
+
+        let content = "";
+        topList.forEach(([id, data], index) => {
+            const huyChuong = ["🥇", "🥈", "🥉", "🏅", "🏅"];
+            content += `${huyChuong[index]} <@${id}>: \`${data.tien}$\` | \`${data.xu || 0} Xu\`\n`;
+        });
+
+        const topEmbed = new EmbedBuilder()
+            .setTitle("🏆 BẢNG XẾP HẠNG PHÚ HỘ SERVER")
+            .setColor(0xFFD700)
+            .setDescription(content)
+            .setFooter({ text: "Muốn lên Top? Hãy chăm chỉ cày cuốc sếp nhé!" });
+
+        message.channel.send({ embeds: [topEmbed] });
+    }
     // --- LỆNH !rbfriends: THỐNG KÊ TƯƠNG TÁC ---
     if (command === 'rbfriends') {
         const username = args[0];
