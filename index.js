@@ -138,6 +138,7 @@ if (command === 'help') {
                     value: "`!fish`: Câu cá kiếm tiền triệu.\n`!moruong`: Mở rương nổ hũ (36k-67k).\n`!vi`: Xem ví, địa vị & tiền án.\n`!doixu`: Đổi tiền sang Xu Vàng.", 
                     inline: false 
                 },
+                {
                 name: "Tài xỉu", 
                     value: "`!taixiu`:tâm lí con bạc belike.\n`!de`:đề).\n`!baucua`: bầu cua.", 
                     inline: false 
