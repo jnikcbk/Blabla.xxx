@@ -528,7 +528,65 @@ if (command === 'phientoa') {
         };
         track();
     }
+if (command === 'taixiu') {
+        const userId = message.author.id;
+        const cuoc = parseInt(args[0]);
+        const luaChon = args[1]?.toLowerCase();
 
+        // 1. Kiểm tra đầu vào
+        if (!tuiDo[userId] || tuiDo[userId].tien < cuoc || cuoc <= 0) {
+            return message.reply("❌ Sếp không đủ tiền hoặc mức cược không hợp lệ!");
+        }
+        if (!['tai', 'xiu'].includes(luaChon)) {
+            return message.reply("❓ Sếp chọn `tai` hay `xiu`? (VD: !taixiu 500 tai)");
+        }
+
+        // Trừ tiền đặt cược trước
+        tuiDo[userId].tien -= cuoc;
+
+        // 2. Tạo Embed hiệu ứng lắc xúc xắc
+        const lacEmbed = new EmbedBuilder()
+            .setTitle("🎲 ĐANG LẮC XÚC XẮC...")
+            .setColor(0xFFFF00)
+            .setDescription(`**Người chơi:** ${message.author}\n**Mức cược:** \`${cuoc}$\`\n**Đặt vào:** \`${luaChon.toUpperCase()}\``)
+            .setImage("https://i.imgur.com/978wA8A.gif") // GIF xúc xắc đang lắc cực đẹp
+            .setFooter({ text: "Vận may sẽ mỉm cười với ai đây..." });
+
+        const msg = await message.channel.send({ embeds: [lacEmbed] });
+
+        // 3. Đợi 3 giây để tạo độ hồi hộp rồi mới hiện kết quả
+        setTimeout(async () => {
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            const d3 = Math.floor(Math.random() * 6) + 1;
+            const tong = d1 + d2 + d3;
+            const ketQua = tong >= 11 ? 'tai' : 'xiu';
+            
+            // Map icon xúc xắc
+            const diceIcons = {
+                1: "⚀", 2: "⚁", 3: "⚂", 4: "⚃", 5: "⚄", 6: "⚅"
+            };
+
+            const win = luaChon === ketQua;
+            if (win) tuiDo[userId].tien += cuoc * 2;
+
+            const ketQuaEmbed = new EmbedBuilder()
+                .setTitle(win ? "🎉 CHIẾN THẮNG!" : "💸 TRẮNG TAY...")
+                .setColor(win ? 0x00FF00 : 0xFF0000)
+                .setThumbnail(win ? "https://i.imgur.com/An9S9Yv.png" : "https://i.imgur.com/YmK0xO5.png") // Ảnh thắng/thua
+                .addFields(
+                    { name: "Kết quả", value: `\`${d1}\` - \`${d2}\` - \`${d3}\` (Tổng: **${tong}**)`, inline: false },
+                    { name: "Phân loại", value: `⚖️ **${ketQua.toUpperCase()}**`, inline: true },
+                    { name: "Tiền dư", value: `💰 **${tuiDo[userId].tien}$**`, inline: true }
+                )
+                .setDescription(win 
+                    ? `Chúc mừng sếp! Sếp đã ăn được **${cuoc}$**!` 
+                    : `Rất tiếc, sếp đã mất **${cuoc}$** vào tay nhà cái rồi.`)
+                .setFooter({ text: `Xúc xắc: ${diceIcons[d1]} ${diceIcons[d2]} ${diceIcons[d3]}` });
+
+            await msg.edit({ embeds: [ketQuaEmbed] });
+        }, 3000); // Đợi 3 giây
+    }
     // --- LỆNH !ttacc: PHIÊN BẢN SOI ACC TOÀN DIỆN ---
     if (command === 'ttacc') {
         const username = args[0];
