@@ -30,6 +30,7 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
    // --- TỰ ĐỘNG KHEN TIỂU THƯ ---
+   // --- TỰ ĐỘNG KHEN TIỂU THƯ (CÓ CÔNG TẮC) ---
     if (message.author.id === '1427964230241488896' && cheDoNinh === true) {
         const loiKhen20 = [
             "Công chúa vừa lên tiếng, cả server bỗng thấy nhẹ nhàng hẳn đi... 🌸",
@@ -131,17 +132,42 @@ if (command === 'baucua') {
         }, 2500);
     }
     // Lệnh Bật Khen
+    // Lệnh Bật Khen (Inbox riêng)
     if (command === 'batkhen') {
-        if (message.author.id !== message.guild.ownerId) return message.reply("🚫 Lệnh này chỉ dành cho Chủ Server!");
+        const isAdmin = message.member.permissions.has('ManageGuild');
+        const isOwner = message.author.id === message.guild.ownerId;
+        
+        if (!isAdmin && !isOwner) return; // Không đủ quyền thì bot im lặng luôn
+
         cheDoNinh = true;
-        message.reply("✅ **MÁY NỊNH ĐÃ BẬT:** Bot sẽ bắt đầu ca tụng tiểu thư hết lời! 🌸");
+        
+        // Xóa lệnh vừa gõ để giữ bí mật (tùy chọn)
+        try { await message.delete(); } catch(e) {}
+
+        // Gửi tin nhắn vào Inbox (DM)
+        try {
+            await message.author.send("✅ **HỆ THỐNG NIỆM CHÚ:** Đã bật chế độ nịnh tiểu thư 100%. Cô ấy chat gì bot cũng sẽ khen!");
+        } catch (e) {
+            message.reply("✅ Đã bật khen! (Nhưng sếp khóa Inbox nên em báo tại đây luôn).").then(m => setTimeout(() => m.delete(), 5000));
+        }
     }
 
-    // Lệnh Tắt Khen
+    // Lệnh Tắt Khen (Inbox riêng)
     if (command === 'tatkhen') {
-        if (message.author.id !== message.guild.ownerId) return message.reply("🚫 Lệnh này chỉ dành cho Chủ Server!");
+        const isAdmin = message.member.permissions.has('ManageGuild');
+        const isOwner = message.author.id === message.guild.ownerId;
+        
+        if (!isAdmin && !isOwner) return;
+
         cheDoNinh = false;
-        message.reply("⏹️ **MÁY NỊNH ĐÃ TẮT:** Bot sẽ im lặng để tiểu thư nghỉ ngơi.");
+
+        try { await message.delete(); } catch(e) {}
+
+        try {
+            await message.author.send("⏹️ **HỆ THỐNG NIỆM CHÚ:** Đã tắt chế độ nịnh. Bot sẽ tạm thời giữ im lặng trước tiểu thư.");
+        } catch (e) {
+            message.reply("⏹️ Đã tắt khen!").then(m => setTimeout(() => m.delete(), 5000));
+        }
     }
     if (command === 'de') {
         const userId = message.author.id;
@@ -196,7 +222,7 @@ if (command === 'help') {
             },
             { 
                 name: "🔐 TIỆN ÍCH & QUẢN TRỊ", 
-                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).", 
+                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).\n`!resetmoney @user [resetxuve0].\n`!xoamoney @user xoá xu 1 người.\n`!checkgianlan.\n`topgiau.", 
                 inline: false 
             }
         )
@@ -813,6 +839,42 @@ if (command === 'taixiu') {
             }
         }, 1000); // Mỗi giây lắc 1 lần
     }
+    if (command === 'checkgianlan' || command === 'topgiau') {
+        // Chỉ Admin/Owner mới được xem báo cáo chi tiết gian lận
+        const isAdmin = message.member.permissions.has('ManageGuild');
+        
+        // Chuyển dữ liệu tuiDo thành danh sách để sắp xếp
+        const danhSachGiau = Object.entries(tuiDo)
+            .map(([id, data]) => ({ id, ...data }))
+            .sort((a, b) => b.tien - a.tien) // Thằng nhiều tiền nhất lên đầu
+            .slice(0, 10); // Lấy top 10
+
+        const hanMucNghiVan = 500000000; // Ngưỡng nghi vấn: 500 Triệu (Sếp tùy chỉnh số này)
+
+        const embedTop = new EmbedBuilder()
+            .setTitle("💰 BẢNG XẾP HẠNG ĐẠI GIA & THANH TRA TÀI CHÍNH")
+            .setColor(0xFFA500)
+            .setThumbnail("https://cdn-icons-png.flaticon.com/512/2654/2654518.png")
+            .setDescription("Dưới đây là danh sách 10 người giàu nhất server:")
+            .setTimestamp();
+
+        let listString = "";
+        danhSachGiau.forEach((user, index) => {
+            const member = message.guild.members.cache.get(user.id);
+            const name = member ? member.displayName : `User ẩn (${user.id})`;
+            const status = user.tien >= hanMucNghiVan ? "⚠️ **[NGHI VẤN GIAN LẬN]**" : "✅ *Hợp lệ*";
+            
+            listString += `**${index + 1}. ${name}**: \`${user.tien.toLocaleString()}$\`\n> Tình trạng: ${status}\n\n`;
+        });
+
+        embedTop.addFields({ name: "📊 Danh sách chi tiết", value: listString || "Chưa có dữ liệu" });
+        
+        if (isAdmin) {
+            embedTop.setFooter({ text: "Sếp có thể dùng !resetmoney để xử lý kẻ gian lận!" });
+        }
+
+        message.channel.send({ embeds: [embedTop] });
+    }
     // --- LỆNH !ttacc: PHIÊN BẢN SOI ACC TOÀN DIỆN ---
     if (command === 'ttacc') {
         const username = args[0];
@@ -880,7 +942,49 @@ if (command === 'taixiu') {
             message.reply("❌ Lỗi: Không thể lấy dữ liệu từ Roblox. Tài khoản có thể đã bị xóa hoặc API lag.");
         }
                 }
+// 1. LỆNH RESET TIỀN (Về 0)
+    if (command === 'resetmoney') {
+        // Chỉ Chủ Server (Owner) hoặc Admin có quyền
+        if (!message.member.permissions.has('ManageGuild')) return message.reply("🚫 Quyền lực hạn chế, sếp không thể reset tiền người khác!");
 
+        const target = message.mentions.members.first();
+        if (!target) return message.reply("🎯 Tag người cần reset tiền vào sếp ơi! (VD: !resetmoney @ten)");
+
+        if (!tuiDo[target.id]) tuiDo[target.id] = { tien: 0, xu: 0, tongCa: 0, tienAn: 0, baoVe: null };
+        
+        const tienCu = tuiDo[target.id].tien;
+        tuiDo[target.id].tien = 0;
+
+        const embedReset = new EmbedBuilder()
+            .setTitle("🧹 THU HỒI TÀI SẢN")
+            .setColor(0xff0000)
+            .setDescription(`Đã reset toàn bộ ví tiền của ${target} về **0$**.\n*(Số tiền vừa bốc hơi: ${tienCu.toLocaleString()}$)*`)
+            .setFooter({ text: `Thực hiện bởi: ${message.author.username}` });
+
+        message.channel.send({ embeds: [embedReset] });
+    }
+
+    // 2. LỆNH XÓA TIỀN (Trừ một số lượng nhất định)
+    if (command === 'xoamoney') {
+        if (!message.member.permissions.has('ManageGuild')) return message.reply("🚫 Sếp không đủ quyền hạn để thu thuế!");
+
+        const target = message.mentions.members.first();
+        const soTienXoa = parseInt(args[1]);
+
+        if (!target || isNaN(soTienXoa) || soTienXoa <= 0) {
+            return message.reply("📝 Cú pháp chuẩn: `!xoamoney @ten [số tiền]` (VD: !xoamoney @ten 50000)");
+        }
+
+        if (!tuiDo[target.id]) tuiDo[target.id] = { tien: 0, xu: 0, tongCa: 0, tienAn: 0, baoVe: null };
+
+        if (tuiDo[target.id].tien < soTienXoa) {
+            tuiDo[target.id].tien = 0; // Nếu tiền hiện có ít hơn số cần xóa thì về 0 luôn
+        } else {
+            tuiDo[target.id].tien -= soTienXoa;
+        }
+
+        message.channel.send(`✅ Đã thu hồi **${soTienXoa.toLocaleString()}$** từ ví của ${target}. Ví hiện tại: **${tuiDo[target.id].tien.toLocaleString()}$**`);
+    }
     // --- LỆNH !rbgroup: SOI HỘI NHÓM CHI TIẾT ---
     if (command === 'rbgroup') {
         const username = args[0];
