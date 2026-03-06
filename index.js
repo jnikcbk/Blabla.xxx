@@ -29,6 +29,22 @@ client.once('ready', () => {
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
+   if (message.author.id === '1427964230241488896') {
+        const loiKhenConGai = [
+            "Công chúa vừa lên tiếng, cả server bỗng thấy nhẹ nhàng hẳn đi... 🌸",
+            "Đúng là lời nói của mỹ nhân, nghe vừa ngọt ngào vừa thông thái! ✨",
+            "Tiểu thư <@1427964230241488896> không chỉ xinh đẹp mà chat cũng đầy khí chất! 🎀",
+            "Hào quang của nữ vương làm em chói mắt quá, đẹp không tì vết! 👑",
+            "Mọi ánh nhìn lúc này đều hướng về phía tiểu thư <@1427964230241488896>... 🌈",
+            "Vâng ạ, công chúa nói gì cũng đúng, em chỉ biết lắng nghe và ngưỡng mộ! 💖",
+            "Sự dịu dàng của tiểu thư là liều thuốc cho cả server này. 🌷",
+            "Nữ thần <@1427964230241488896> vừa ghé thăm, đúng là diễm phúc của Leviathan! 💎"
+        ];
+        
+        const cauKhen = loiKhenConGai[Math.floor(Math.random() * loiKhenConGai.length)];
+        // Bot sẽ tự reply tin nhắn của cô ấy
+        await message.reply({ content: cauKhen });
+    }
     if (!message.content.startsWith('!')) return;
 
     const args = message.content.slice(1).trim().split(/ +/);
@@ -165,7 +181,6 @@ if (command === 'help') {
     return message.reply({ embeds: [embed] });
 }
 if (command === 'phientoa') {
-        // 1. Kiểm tra quyền hạn (Chỉ Admin hoặc Chủ Server)
         const isAdmin = message.member.permissions.has('ManageGuild');
         const isOwner = message.author.id === message.guild.ownerId;
         if (!isAdmin && !isOwner) return message.reply("🚫 **Quyền lực hạn chế:** Chỉ Admin mới được mở phiên tòa xét xử!");
@@ -173,20 +188,18 @@ if (command === 'phientoa') {
         const target = message.mentions.members.first();
         const toiDanh = args.slice(1).join(" ") || "Tội phá hoại sự bình yên của server";
         
-        if (!target) return message.reply("🔨 **Lệnh của Thẩm phán:** Tag bị cáo vào tòa! (VD: !phientoa @Ten Tội nói nhiều)");
+        if (!target) return message.reply("🔨 **Lệnh của Thẩm phán:** Tag bị cáo vào tòa!");
         if (target.id === message.author.id) return message.reply("Sếp không thể tự đưa mình ra tòa! 😂");
 
-        // Khởi tạo dữ liệu nếu chưa có
         if (!tuiDo[target.id]) tuiDo[target.id] = { tien: 0, xu: 0, tongCa: 0, tienAn: 0, baoVe: null };
 
         let coToi = 0;
         let voToi = 0;
         const votedUsers = new Set();
 
-        // Hàm vẽ thanh tiến trình công lý
         const getBar = (guilty, innocent) => {
             const total = guilty + innocent || 1;
-            const size = 12;
+            const size = 15; // Tăng độ dài thanh cho đẹp
             const guiltyLen = Math.round((guilty / total) * size);
             const innocentLen = size - guiltyLen;
             return "🟥".repeat(guiltyLen) + "🟦".repeat(innocentLen);
@@ -198,16 +211,23 @@ if (command === 'phientoa') {
             const innocentPer = 100 - guiltyPer;
             
             return new EmbedBuilder()
-                .setTitle("⚖️ HỘI ĐỒNG XÉT XỬ TỐI CAO")
+                .setTitle("⚖️ TÒA ÁN TỐI CAO LEVIATHAN")
                 .setColor(coToi > voToi ? 0xFF0000 : 0x00FF00)
                 .setThumbnail(target.user.displayAvatarURL({ dynamic: true }))
-                .setDescription(`**Bị cáo:** ${target}\n**Thẩm phán:** ${message.author}\n**Tội danh:** \`${toiDanh}\`\n**Tiền án:** \`${tuiDo[target.id].tienAn} lần\``)
+                .setDescription(`
+                    **━━━━━━━━━━━━━━━━━━━━━━━━**
+                    **🏛️ Chủ tọa:** ${message.author}
+                    **👤 Bị cáo:** ${target}
+                    **📜 Tội danh:** \`${toiDanh}\`
+                    **📉 Tiền án:** \`${tuiDo[target.id].tienAn} lần\`
+                    **━━━━━━━━━━━━━━━━━━━━━━━━**
+                `)
                 .addFields(
-                    { name: `✅ CÓ TỘI [${coToi}]`, value: `\`${guiltyPer}%\``, inline: true },
-                    { name: `❌ VÔ TỘI [${voToi}]`, value: `\`${innocentPer}%\``, inline: true },
+                    { name: `✅ KẾT TỘI [${coToi}]`, value: `\`${guiltyPer}%\``, inline: true },
+                    { name: `❌ BÀO CHỮA [${voToi}]`, value: `\`${innocentPer}%\``, inline: true },
                     { name: "⚖️ CÁN CÂN CÔNG LÝ", value: `\`${getBar(coToi, voToi)}\`` }
                 )
-                .setFooter({ text: "Phiên tòa kéo dài 45 giây • Quyết định của bạn là công lý!" })
+                .setFooter({ text: "⏳ Phiên tòa sẽ kết thúc sau 45 giây nghị án..." })
                 .setTimestamp();
         };
 
@@ -216,12 +236,16 @@ if (command === 'phientoa') {
             new ButtonBuilder().setCustomId('innocent').setLabel('BÀO CHỮA').setStyle(ButtonStyle.Success).setEmoji('🛡️')
         );
 
-        const msg = await message.channel.send({ content: `🔔 **PHIÊN TÒA BẮT ĐẦU!** Mời hội đồng thẩm phán bỏ phiếu.`, embeds: [createEmbed()], components: [row] });
+        const msg = await message.channel.send({ 
+            content: `📢 **THÔNG BÁO:** Phiên tòa xét xử ${target} đang diễn ra!`, 
+            embeds: [createEmbed()], 
+            components: [row] 
+        });
 
         const collector = msg.createMessageComponentCollector({ time: 45000 });
 
         collector.on('collect', async i => {
-            if (votedUsers.has(i.user.id)) return i.reply({ content: "Mỗi người chỉ được bỏ phiếu một lần!", ephemeral: true });
+            if (votedUsers.has(i.user.id)) return i.reply({ content: "Sếp đã bỏ phiếu rồi, vui lòng đợi tuyên án!", ephemeral: true });
             
             votedUsers.add(i.user.id);
             if (i.customId === 'guilty') coToi++;
@@ -231,65 +255,66 @@ if (command === 'phientoa') {
         });
 
         collector.on('end', async () => {
-            await msg.edit({ content: "🛑 **PHIÊN TÒA KẾT THÚC! ĐANG THI HÀNH ÁN...**", components: [] });
+            await msg.edit({ content: "🛑 **PHIÊN TÒA KẾT THÚC! HỘI ĐỒNG ĐANG TUYÊN ÁN...**", components: [] });
 
-            if (coToi > voToi) {
-                const data = tuiDo[target.id];
-                const goi = data.baoVe;
-                const tiLe = { 'dong': 20, 'bac': 50, 'vang': 85, 'kimcuong': 100 };
+            // Đợi 2 giây cho kịch tính
+            setTimeout(async () => {
+                if (coToi > voToi) {
+                    const data = tuiDo[target.id];
+                    const goi = data.baoVe;
+                    const tiLe = { 'dong': 20, 'bac': 50, 'vang': 85, 'kimcuong': 100 };
 
-                // --- HỆ THỐNG THUÊ LUẬT SƯ (CHẠY ÁN) ---
-                if (goi && tiLe[goi]) {
-                    const tiLeThanhCong = tiLe[goi];
-                    const random = Math.random() * 100;
-                    data.baoVe = null; // Gói bảo vệ bị tiêu thụ sau khi ra tòa
+                    if (goi && tiLe[goi]) {
+                        data.baoVe = null; 
+                        if (Math.random() * 100 <= tiLe[goi]) {
+                            return message.channel.send({ embeds: [
+                                new EmbedBuilder()
+                                    .setTitle("⚡ LUẬT SƯ CAN THIỆP THẦN TỐC")
+                                    .setColor(0x00FF00)
+                                    .setThumbnail("https://cdn-icons-png.flaticon.com/512/950/950008.png")
+                                    .setDescription(`🛡️ Bị cáo ${target} đã thoát án tử nhờ gói bảo vệ **${goi.toUpperCase()}**!\n\n**Kết quả:** Luật sư đã tìm ra kẽ hở pháp lý. Bị cáo được **TRẮNG ÁN**!`)
+                            ]});
+                        } else {
+                            message.channel.send(`🚑 **TIN BUỒN:** Luật sư gói **${goi.toUpperCase()}** đã cố gắng bào chữa nhưng không thành công!`);
+                        }
+                    }
 
-                    if (random <= tiLeThanhCong) {
-                        return message.channel.send({ embeds: [
-                            new EmbedBuilder()
-                                .setTitle("⚖️ LUẬT SƯ CAN THIỆP THÀNH CÔNG")
-                                .setColor(0x00FF00)
-                                .setThumbnail("https://cdn-icons-png.flaticon.com/512/950/950008.png")
-                                .setDescription(`🛡️ Bị cáo ${target} đã sử dụng quyền trợ giúp từ luật sư gói **${goi.toUpperCase()}**.\n\n**Kết quả:** Luật sư đã cãi thắng tại tòa. Bị cáo được **TRẮNG ÁN**!`)
-                                .setFooter({ text: "Gói bảo vệ đã hết hạn." })
-                        ]});
+                    data.tienAn += 1;
+                    const mucPhatTien = 100000;
+                    let punishment = "";
+
+                    if (data.tien >= mucPhatTien) {
+                        data.tien -= mucPhatTien;
+                        punishment = `💰 **HÌNH PHẠT:** Tịch thu **${mucPhatTien.toLocaleString()}$** nộp vào công quỹ!`;
                     } else {
-                        message.channel.send(`🚑 **TIN BUỒN:** Luật sư gói **${goi.toUpperCase()}** đã cố gắng hết sức nhưng thất bại trước bằng chứng thép!`);
+                        data.tien = 0; 
+                        punishment = `💀 **TRỌNG TỘI:** Không đủ tiền nộp phạt! Bị cáo bị **TỊCH THU TOÀN BỘ TÀI SẢN** và bị biệt giam **10 PHÚT**!`;
+                        try { await target.timeout(600000, "Leviathan Supreme Court Verdict"); } catch(e) {}
                     }
-                }
 
-                // --- HÌNH PHẠT NẶNG (100K + 10 PHÚT TIMEOUT) ---
-                data.tienAn += 1;
-                const mucPhatTien = 100000;
-                let ketQuaPhat = "";
+                    const resultEmbed = new EmbedBuilder()
+                        .setTitle("🔨 BẢN ÁN CUỐI CÙNG: CÓ TỘI")
+                        .setColor(0x2b2d31) // Màu xám đen sang trọng
+                        .setThumbnail("https://cdn-icons-png.flaticon.com/512/3822/3822164.png")
+                        .setDescription(`
+                            **⚖️ Hội đồng tuyên án:** Bị cáo ${target} chính thức bị kết tội.
+                            
+                            **━━━━━━━━━━━━━━━━━━━━━━━━**
+                            ${punishment}
+                            **━━━━━━━━━━━━━━━━━━━━━━━━**
+                            
+                            **📊 Hồ sơ tội phạm:**
+                            • Tổng số tiền án: \`${data.tienAn}\`
+                            • Trạng thái: \`Đã thi hành án\`
+                        `)
+                        .setFooter({ text: "Công lý đã được thực thi bởi Leviathan" })
+                        .setTimestamp();
 
-                if (data.tien >= mucPhatTien) {
-                    data.tien -= mucPhatTien;
-                    ketQuaPhat = `💰 **HÌNH PHẠT:** Tịch thu **${mucPhatTien.toLocaleString()}$** nộp vào công quỹ!`;
+                    message.channel.send({ embeds: [resultEmbed] });
                 } else {
-                    // Hình phạt tử hình: Reset sạch tiền và cấm chat 10 phút
-                    data.tien = 0; 
-                    ketQuaPhat = `💀 **TRỌNG TỘI:** Do không đủ tiền nộp phạt, bị cáo bị **TỊCH THU TOÀN BỘ TIỀN MẶT** và biệt giam **10 PHÚT**!`;
-                    try { 
-                        await target.timeout(600000, "Kết án bởi tòa án Leviathan"); 
-                    } catch(e) {
-                        ketQuaPhat += "\n*(Lưu ý: Bot thiếu quyền hoặc vai trò thấp hơn bị cáo để Timeout)*";
-                    }
+                    message.channel.send(`🕊️ **TRẮNG ÁN!** Hội đồng tuyên bố ${target} **VÔ TỘI** và được trả tự do ngay lập tức.`);
                 }
-
-                const embedToi = new EmbedBuilder()
-                    .setTitle("🔨 BẢN ÁN TỬ HÌNH - CÔNG LÝ THỰC THI")
-                    .setColor(0x000000)
-                    .setThumbnail("https://cdn-icons-png.flaticon.com/512/3822/3822164.png")
-                    .setDescription(`⚖️ Hội đồng xét xử tuyên bố: ${target} **CÓ TỘI**!\n\n${ketQuaPhat}`)
-                    .addFields({ name: "📊 Hồ sơ đen", value: `Số tiền án hiện tại: \`${data.tienAn} lần\`` })
-                    .setFooter({ text: "Công lý đã được thực thi!" })
-                    .setTimestamp();
-
-                message.channel.send({ embeds: [embedToi] });
-            } else {
-                message.channel.send(`🕊️ **VÔ TỘI!** Bị cáo ${target} được trả tự do do sự tin tưởng của cộng đồng.`);
-            }
+            }, 2000);
         });
     }
     if (command === 'luatsu') {
