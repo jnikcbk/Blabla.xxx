@@ -222,7 +222,7 @@ if (command === 'help') {
             },
             { 
                 name: "🔐 TIỆN ÍCH & QUẢN TRỊ", 
-                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).\n`!resetmoney @user [resetxuve0].\n`!xoamoney @user xoá xu 1 người.\n`!checkgianlan.\n`topgiau.", 
+                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).\n`!resetmoney @user [resetxuve0].\n`!xoamoney @user xoá xu 1 người.\n`!checkgianlan.\n`!topgiau check top gianlan.", 
                 inline: false 
             }
         )
