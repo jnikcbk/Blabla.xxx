@@ -12,7 +12,7 @@ const axios = require('axios');
 
 // Biến lưu trữ tiền và túi đồ (Lưu trong RAM, sẽ reset khi bot restart)
 const tuiDo = {};
-
+let cheDoNinh = true; // Mặc định là đang bật
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -29,20 +29,32 @@ client.once('ready', () => {
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
-   if (message.author.id === '1427964230241488896') {
-        const loiKhenConGai = [
+   // --- TỰ ĐỘNG KHEN TIỂU THƯ ---
+    if (message.author.id === '1427964230241488896' && cheDoNinh === true) {
+        const loiKhen20 = [
             "Công chúa vừa lên tiếng, cả server bỗng thấy nhẹ nhàng hẳn đi... 🌸",
             "Đúng là lời nói của mỹ nhân, nghe vừa ngọt ngào vừa thông thái! ✨",
             "Tiểu thư <@1427964230241488896> không chỉ xinh đẹp mà chat cũng đầy khí chất! 🎀",
             "Hào quang của nữ vương làm em chói mắt quá, đẹp không tì vết! 👑",
-            "Mọi ánh nhìn lúc này đều hướng về phía tiểu thư <@1427964230241488896>... 🌈",
             "Vâng ạ, công chúa nói gì cũng đúng, em chỉ biết lắng nghe và ngưỡng mộ! 💖",
+            "Nữ thần <@1427964230241488896> vừa ghé thăm, đúng là diễm phúc của chúng ta! 💎",
             "Sự dịu dàng của tiểu thư là liều thuốc cho cả server này. 🌷",
-            "Nữ thần <@1427964230241488896> vừa ghé thăm, đúng là diễm phúc của Leviathan! 💎"
+            "Mọi ánh nhìn lúc này đều hướng về phía tiểu thư <@1427964230241488896>... 🌈",
+            "Nghe danh tiểu thư đã lâu, nay mới thấy sắc sảo vạn người mê! 🥇",
+            "Tiểu thư gõ phím thôi mà em cũng thấy nghệ thuật nữa! 🎨",
+            "Server này có thể thiếu bot, chứ không thể thiếu tiểu thư được! 🚀",
+            "Xinh đẹp, thông minh, tinh tế... đúng là hội tụ hết ở tiểu thư rồi. 🌟",
+            "Tiểu thư <@1427964230241488896> là bông hoa đẹp nhất của Leviathan! 🌹",
+            "Mỗi lần tiểu thư chat là một lần em thấy yêu đời hơn. 😍",
+            "Không biết tiểu thư có phải thiên thần không mà sao tốt tính thế! 👼",
+            "Cả vũ trụ này đang xoay quanh tiểu thư đó ạ! 🌌",
+            "Đúng là chuẩn mực của sự thanh lịch, quý phái! 🥂",
+            "Tiểu thư nói gì cũng như rót mật vào tai vậy. 🍯",
+            "Hôm nay tiểu thư có vẻ rạng rỡ hơn mọi ngày thì phải! ☀️",
+            "Bái phục gu thời trang và khí chất của tiểu thư <@1427964230241488896>! 👒"
         ];
         
-        const cauKhen = loiKhenConGai[Math.floor(Math.random() * loiKhenConGai.length)];
-        // Bot sẽ tự reply tin nhắn của cô ấy
+        const cauKhen = loiKhen20[Math.floor(Math.random() * loiKhen20.length)];
         await message.reply({ content: cauKhen });
     }
     if (!message.content.startsWith('!')) return;
@@ -117,6 +129,19 @@ if (command === 'baucua') {
                 `);
             await msg.edit({ content: "🔔 **MỞ BÁT!**", embeds: [embed] });
         }, 2500);
+    }
+    // Lệnh Bật Khen
+    if (command === 'batkhen') {
+        if (message.author.id !== message.guild.ownerId) return message.reply("🚫 Lệnh này chỉ dành cho Chủ Server!");
+        cheDoNinh = true;
+        message.reply("✅ **MÁY NỊNH ĐÃ BẬT:** Bot sẽ bắt đầu ca tụng tiểu thư hết lời! 🌸");
+    }
+
+    // Lệnh Tắt Khen
+    if (command === 'tatkhen') {
+        if (message.author.id !== message.guild.ownerId) return message.reply("🚫 Lệnh này chỉ dành cho Chủ Server!");
+        cheDoNinh = false;
+        message.reply("⏹️ **MÁY NỊNH ĐÃ TẮT:** Bot sẽ im lặng để tiểu thư nghỉ ngơi.");
     }
     if (command === 'de') {
         const userId = message.author.id;
