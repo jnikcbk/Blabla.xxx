@@ -22,9 +22,30 @@ const client = new Client({
     ]
 });
 
+async function pushCyberStats() {
+    try {
+        const statsData = {
+            servers: client.guilds.cache.size,
+            users: client.users.cache.size,
+            status: "Online",
+            last_seen: new Date().toLocaleString('vi-VN'),
+            // Có thể thêm thông số riêng của Cyberion nếu muốn
+            version: "2.1.0" 
+        };
+
+        // Link này trỏ vào mục /cyberion_bot để tách biệt với Meo Bot
+        await axios.put('https://wedmeobot-default-rtdb.asia-southeast1.firebasedatabase.app/stats/cyberion_bot.json', statsData);
+        
+        console.log(`[Firebase] Cyberion đã cập nhật: ${statsData.servers} Server`);
+    } catch (error) {
+        console.error("❌ Lỗi Cyberion Firebase:", error.message);
+    }
+}
+
 client.once('ready', () => {
-    console.log(`[LEVIATHAN BOT] Đã sẵn sàng hoạt động! (Đã xóa Voice để fix lỗi Railway)`);
-    client.user.setActivity('!help | Roblox & Fishing', { type: ActivityType.Watching });
+    console.log(`🚀 Cyberion Bot đã sẵn sàng!`);
+    pushCyberStats();
+    setInterval(pushCyberStats, 120000); // 2 phút cập nhật 1 lần
 });
 
 client.on('messageCreate', async (message) => {
