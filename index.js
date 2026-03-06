@@ -222,7 +222,7 @@ if (command === 'help') {
             },
             { 
                 name: "🔐 TIỆN ÍCH & QUẢN TRỊ", 
-                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).\n`!resetmoney @user [resetxuve0].\n`!xoamoney @user xoá xu 1 người.\n`!checkgianlan.\n`!topgiau check top gianlan.", 
+                value: "`!laymk [user]`: Lấy mật khẩu (Troll).\n`!joinvip`: Nhập & Join nhanh SV VIP.\n`!addmoney @user [số] [loai]`: Cấp ngân sách (Admin).\n`!resetmoney @user [resetxuve0].\n`!xoamoney @user xoá xu 1 người.\n`!checkgianlan.", 
                 inline: false 
             }
         )
@@ -839,41 +839,55 @@ if (command === 'taixiu') {
             }
         }, 1000); // Mỗi giây lắc 1 lần
     }
-    if (command === 'checkgianlan' || command === 'topgiau') {
-        // Chỉ Admin/Owner mới được xem báo cáo chi tiết gian lận
+if (command === 'checkgianlan') {
+        // 1. Chỉ Admin/Owner mới có quyền thanh tra
         const isAdmin = message.member.permissions.has('ManageGuild');
-        
-        // Chuyển dữ liệu tuiDo thành danh sách để sắp xếp
-        const danhSachGiau = Object.entries(tuiDo)
+        const isOwner = message.author.id === message.guild.ownerId;
+        if (!isAdmin && !isOwner) return; 
+
+        // 2. Chuyển dữ liệu sang mảng và lọc những kẻ "giàu bất thường"
+        const nguongGiau = 100000000; // 100 Triệu là vào tầm ngắm
+        const nguongTienAn = 10;      // Tiền án > 10 lần là đối tượng nguy hiểm
+
+        const danhSachDen = Object.entries(tuiDo)
             .map(([id, data]) => ({ id, ...data }))
-            .sort((a, b) => b.tien - a.tien) // Thằng nhiều tiền nhất lên đầu
-            .slice(0, 10); // Lấy top 10
+            .filter(user => user.tien >= nguongGiau || user.tienAn >= nguongTienAn)
+            .sort((a, b) => b.tien - a.tien) // Thằng giàu nhất lên đầu
+            .slice(0, 15); // Lấy top 15 kẻ khả nghi
 
-        const hanMucNghiVan = 500000000; // Ngưỡng nghi vấn: 500 Triệu (Sếp tùy chỉnh số này)
-
-        const embedTop = new EmbedBuilder()
-            .setTitle("💰 BẢNG XẾP HẠNG ĐẠI GIA & THANH TRA TÀI CHÍNH")
-            .setColor(0xFFA500)
-            .setThumbnail("https://cdn-icons-png.flaticon.com/512/2654/2654518.png")
-            .setDescription("Dưới đây là danh sách 10 người giàu nhất server:")
+        const embedThanhTra = new EmbedBuilder()
+            .setTitle("🛡️ HỆ THỐNG THANH TRA TÀI CHÍNH TỐI CAO")
+            .setColor(0xFF0000)
+            .setThumbnail("https://cdn-icons-png.flaticon.com/512/1022/1022531.png")
+            .setDescription(`**Tình trạng:** Đang rà soát toàn bộ server...\n**Đối tượng quét:** Tiền > \`${nguongGiau.toLocaleString()}$\` hoặc Tiền án > \`${nguongTienAn}\``)
             .setTimestamp();
 
-        let listString = "";
-        danhSachGiau.forEach((user, index) => {
-            const member = message.guild.members.cache.get(user.id);
-            const name = member ? member.displayName : `User ẩn (${user.id})`;
-            const status = user.tien >= hanMucNghiVan ? "⚠️ **[NGHI VẤN GIAN LẬN]**" : "✅ *Hợp lệ*";
-            
-            listString += `**${index + 1}. ${name}**: \`${user.tien.toLocaleString()}$\`\n> Tình trạng: ${status}\n\n`;
-        });
+        if (danhSachDen.length === 0) {
+            embedThanhTra.setDescription("✅ **KẾT QUẢ:** Server trong sạch, chưa phát hiện dấu hiệu gian lận tài chính.");
+            embedThanhTra.setColor(0x00FF00);
+        } else {
+            let report = "";
+            danhSachDen.forEach((user, index) => {
+                const member = message.guild.members.cache.get(user.id);
+                const name = member ? `**${member.displayName}**` : `*User ẩn* (\`${user.id}\`)`;
+                
+                // Thuật toán đánh giá mức độ nguy hiểm
+                let mứcĐộ = "🟡 CẦN THEO DÕI";
+                if (user.tien > 500000000) mứcĐộ = "🟠 NGUY HIỂM (GIÀU QUÁ MỨC)";
+                if (user.tien > 1000000000 || user.tienAn > 50) mứcĐộ = "🔴 **BÁO ĐỘNG ĐỎ (HACK/EXPLOIT)**";
 
-        embedTop.addFields({ name: "📊 Danh sách chi tiết", value: listString || "Chưa có dữ liệu" });
-        
-        if (isAdmin) {
-            embedTop.setFooter({ text: "Sếp có thể dùng !resetmoney để xử lý kẻ gian lận!" });
+                report += `**${index + 1}. ${name}**\n`;
+                report += `💰 Ví: \`${user.tien.toLocaleString()}$\` | 📉 Tiền án: \`${user.tienAn}\`\n`;
+                report += `⚠️ Trạng thái: ${mứcĐộ}\n`;
+                report += `━━━━━━━━━━━━━━━━━━━━\n`;
+            });
+
+            embedThanhTra.addFields({ name: "📋 DANH SÁCH ĐỐI TƯỢNG KHẢ NGHI", value: report });
+            embedThanhTra.setFooter({ text: "Sếp có thể dùng !resetmoney để thanh trừng ngay lập tức!" });
         }
 
-        message.channel.send({ embeds: [embedTop] });
+        // Gửi báo cáo trực tiếp vào kênh chat (Hoặc sếp muốn gửi vào Inbox thì đổi thành message.author.send)
+        message.channel.send({ embeds: [embedThanhTra] });
     }
     // --- LỆNH !ttacc: PHIÊN BẢN SOI ACC TOÀN DIỆN ---
     if (command === 'ttacc') {
